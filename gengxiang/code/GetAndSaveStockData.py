@@ -69,7 +69,7 @@ def save_excel(stock_list, file_name):
 
 
 # excel 读取
-def get_dict_from_refer(file_name):
+def get_excel(file_name):
     # 打开Excel表格
     refer_excel = openpyxl.load_workbook(file_name)
     # 获取指定Sheet表单页
@@ -141,12 +141,12 @@ def get_mysql(stock_code):
 
 # 获取基础信息
 today = get_current('sh000001')
-print(today)
+# print(today)
 
 # 获取历史信息
 # history_list = get_history('sh000001', '2022-09-01', '2022-10-10')
-history_list = [today]
-print(history_list)
+today_list = [today]
+# print(today_list)
 
 """
 # 保存excel
@@ -155,5 +155,8 @@ save_excel(history_list, 'E://StockTips//gengxiang//data//sh000001')
 history_list = get_dict_from_refer('E://StockTips//gengxiang//data//sh000001' + today + '.xlsx')
 """
 
-save_mysql(history_list)
-print(get_mysql('sh000001'))
+save_mysql(today_list)
+history_list = get_mysql('sh000001')
+print(history_list)
+
+
