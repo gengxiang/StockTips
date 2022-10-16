@@ -1,4 +1,5 @@
 import json
+import os
 import time
 from urllib import request
 import openpyxl
@@ -52,8 +53,19 @@ def get_history(stock_code, start_date, end_date):
 
 # excel 保存
 def save_excel(stock_list, file_name):
-    excel = openpyxl.load_workbook(file_name + '.xlsx')
+    if not os.path.isfile(file_name):
+        print(file_name, "文件不存在")
+        openpyxl.Workbook().save(file_name)
+
+    excel = openpyxl.load_workbook(file_name)
     sheet = excel[excel.sheetnames[0]]
+    sheet.cell(row=1, column=1).value = 'date'
+    sheet.cell(row=1, column=2).value = 'name'
+    sheet.cell(row=1, column=3).value = 'code'
+    sheet.cell(row=1, column=4).value = 'price'
+    sheet.cell(row=1, column=5).value = 'volume'
+    sheet.cell(row=1, column=6).value = 't_volume'
+    sheet.cell(row=1, column=7).value = 't_change'
     i = 2
     for history in stock_list:
         sheet.cell(row=i, column=1).value = history['t_date']
@@ -65,7 +77,7 @@ def save_excel(stock_list, file_name):
         sheet.cell(row=i, column=7).value = history['t_change']
         i = i + 1
 
-    excel.save(file_name + '.xlsx')
+    excel.save(file_name)
 
 
 # excel 读取
@@ -150,12 +162,13 @@ today_list = [today]
 # # 保存excel
 # save_excel(today_list, 'E://StockTips//gengxiang//data//sh000001')
 # # 读取excel
-# history_list = get_excel('E://StockTips//gengxiang//data//sh000001.xlsx')
+# history_list = get_excel('E://StockTips//gengxiang//data//sh000001_ddd.xlsx')
 
 save_mysql(today_list)
 history_list = get_mysql('sh000001')
-save_excel(history_list, 'E://StockTips//gengxiang//data//sh000001')
-print(history_list)
+save_excel(history_list, '..\data\sh000001.xlsx')
+
+
 
 
 
