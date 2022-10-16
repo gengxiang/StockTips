@@ -1,12 +1,11 @@
 import json
 import time
 from urllib import request
-
 import openpyxl
 import pymysql
 
 # 今天日期
-today = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
 # http获取当前行情信息
@@ -65,7 +64,8 @@ def save_excel(stock_list, file_name):
         sheet.cell(row=i, column=6).value = history['t_volume']
         sheet.cell(row=i, column=7).value = history['t_change']
         i = i + 1
-    excel.save(file_name + today + '.xlsx')
+
+    excel.save(file_name + todayStr + '.xlsx')
 
 
 # excel 读取
@@ -146,17 +146,16 @@ today = get_current('sh000001')
 # 获取历史信息
 # history_list = get_history('sh000001', '2022-09-01', '2022-10-10')
 today_list = [today]
-# print(today_list)
 
-"""
-# 保存excel
-save_excel(history_list, 'E://StockTips//gengxiang//data//sh000001')
-# 读取excel
-history_list = get_dict_from_refer('E://StockTips//gengxiang//data//sh000001' + today + '.xlsx')
-"""
+# # 保存excel
+# save_excel(today_list, 'E://StockTips//gengxiang//data//sh000001')
+# # 读取excel
+# history_list = get_excel('E://StockTips//gengxiang//data//sh000001' + todayStr + '.xlsx')
 
 save_mysql(today_list)
 history_list = get_mysql('sh000001')
+save_excel(history_list, 'E://StockTips//gengxiang//data//sh000001')
 print(history_list)
+
 
 

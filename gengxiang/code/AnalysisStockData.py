@@ -1,4 +1,9 @@
+import time
+
 import GetAndSaveStockData
+
+# 今天日期
+todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
 def get_analysis_info(basic_list):
@@ -72,6 +77,9 @@ def analysis(analysis_info):
           "收盘价MA16趋势向上:", analysis_info['a_price'] > aa_price)
 
 
-history_list = GetAndSaveStockData.get_mysql('sh000001')
+# history_list = GetAndSaveStockData.get_mysql('sh000001')
+# print(history_list)
+history_list = GetAndSaveStockData.get_excel('E://StockTips//gengxiang//data//sh000001' + todayStr + '.xlsx')
+print(history_list)
 info = get_analysis_info(history_list)
 analysis(info)
