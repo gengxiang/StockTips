@@ -4,6 +4,7 @@ import time
 from urllib import request
 import openpyxl
 import pymysql
+import AnalysisStockData
 
 # 今天日期
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -151,22 +152,24 @@ def get_mysql(stock_code):
     return stock_list
 
 
+stock_code = 'sh000001'
 # 获取基础信息
-today = get_current('sh000001')
-# print(today)
-
+today = get_current(stock_code)
 # 获取历史信息
 # history_list = get_history('sh000001', '2022-09-01', '2022-10-10')
 today_list = [today]
 
-# # 保存excel
-# save_excel(today_list, 'E://StockTips//gengxiang//data//sh000001')
-# # 读取excel
-# history_list = get_excel('E://StockTips//gengxiang//data//sh000001_ddd.xlsx')
-
 save_mysql(today_list)
-history_list = get_mysql('sh000001')
-save_excel(history_list, '..\data\sh000001.xlsx')
+history_list = get_mysql(stock_code)
+
+file_name = '..\data\\' + stock_code + '.xlsx'
+save_excel(history_list, file_name)
+
+# history_list = get_mysql('sh000001')
+history_list = get_excel(file_name)
+
+AnalysisStockData.analysis(AnalysisStockData.get_analysis_info(history_list))
+
 
 
 

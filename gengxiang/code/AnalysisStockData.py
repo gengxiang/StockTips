@@ -1,7 +1,5 @@
 import time
-import os
 
-import GetAndSaveStockData
 
 # 今天日期
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -71,16 +69,10 @@ def analysis(analysis_info):
                         analysis_info['at_volume_3'] + analysis_info['at_volume_4']) / 5, 2)
     print(analysis_info['date'], "---->", analysis_info['name'], analysis_info['code'])
     print("今天的收盘价:", analysis_info['price'], "MA16:", analysis_info['a_price'])
-    print("今天的交易额:", analysis_info['t_volume'], "MA16:", analysis_info['at_volume'])
-    print("成交额高于MA16", analysis_info['t_volume'] > analysis_info['at_volume'],
+    print("今天的交易额:", analysis_info['t_volume'], "(亿)", "MA16:", analysis_info['at_volume'], "(亿)")
+    print("成交额高于MA16:", analysis_info['t_volume'] > analysis_info['at_volume'],
           "成交额MA16趋势向上:", analysis_info['at_volume'] > aat_volume)
-    print("收盘价高于MA16", analysis_info['price'] > analysis_info['a_price'],
+    print("收盘价高于MA16:", analysis_info['price'] > analysis_info['a_price'],
           "收盘价MA16趋势向上:", analysis_info['a_price'] > aa_price)
 
 
-# history_list = GetAndSaveStockData.get_mysql('sh000001')
-# print(history_list)
-history_list = GetAndSaveStockData.get_excel('../data/sh000001.xlsx')
-# print(history_list)
-info = get_analysis_info(history_list)
-analysis(info)
