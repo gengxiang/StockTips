@@ -162,11 +162,11 @@ today_list = [today]
 save_mysql(today_list)
 history_list = get_mysql(stock_code)
 
-file_name = '..\data\\' + stock_code + '.xlsx'
-save_excel(history_list, file_name)
+excel_file_name = '..\data\\' + stock_code + '.xlsx'
+save_excel(history_list, excel_file_name)
 
 # history_list = get_mysql('sh000001')
-history_list = get_excel(file_name)
+history_list = get_excel(excel_file_name)
 
 AnalysisStockData.analysis(AnalysisStockData.get_analysis_info(history_list))
 
