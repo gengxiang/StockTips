@@ -42,32 +42,34 @@ def get_analysis_info(basic_list):
         'code': basic_list[0]['code'],
         'name': basic_list[0]['name'],
         'price': basic_list[0]['price'],
-        'a_price': round(p1 / 16),
-        'a_price_1': round(p2 / 16),
-        'a_price_2': round(p3 / 16),
-        'a_price_3': round(p4 / 16),
-        'a_price_4': round(p5 / 16),
-        't_volume': basic_list[0]['t_volume'],
-        'at_volume': round(t1 / 16),
-        'at_volume_1': round(t2 / 16),
-        'at_volume_2': round(t3 / 16),
-        'at_volume_3': round(t4 / 16),
-        'at_volume_4': round(t5 / 16)
+        'a_price': round(p1 / 16, 2),
+        'a_price_1': round(p2 / 16, 2),
+        'a_price_2': round(p3 / 16, 2),
+        'a_price_3': round(p4 / 16, 2),
+        'a_price_4': round(p5 / 16, 2),
+        't_volume': round(basic_list[0]['t_volume'] / 10000, 2),
+        'at_volume': round(t1 / 160000, 2),
+        'at_volume_1': round(t2 / 160000, 2),
+        'at_volume_2': round(t3 / 160000, 2),
+        'at_volume_3': round(t4 / 160000, 2),
+        'at_volume_4': round(t5 / 160000, 2)
     }
 
     return analysis_info
 
 
 def analysis(analysis_info):
-    aa_price = analysis_info['a_price'] + analysis_info['a_price_1'] + analysis_info['a_price_2'] + analysis_info[
-        'a_price_3'] + analysis_info['a_price_4']
-    aat_volume = analysis_info['at_volume'] + analysis_info['at_volume_1'] + analysis_info['at_volume_2'] + \
-                 analysis_info['at_volume_3'] + analysis_info['at_volume_4']
+    aa_price = round((analysis_info['a_price'] + analysis_info['a_price_1'] + analysis_info['a_price_2'] +
+                      analysis_info['a_price_3'] + analysis_info['a_price_4']) / 5, 2)
+    aat_volume = round((analysis_info['at_volume'] + analysis_info['at_volume_1'] + analysis_info['at_volume_2'] +
+                        analysis_info['at_volume_3'] + analysis_info['at_volume_4']) / 5, 2)
     print(analysis_info['date'], "---->", analysis_info['name'], analysis_info['code'])
     print("今天的收盘价:", analysis_info['price'], "MA16:", analysis_info['a_price'])
-    print("今天的交易额:", round(analysis_info['t_volume'] / 10000, 2), "MA16:", round(analysis_info['at_volume'] / 10000, 2))
-    print("成交额高于MA16", analysis_info['t_volume'] > analysis_info['at_volume'], "成交额MA16趋势向上:", round(analysis_info['at_volume']/10000, 2) > round(aat_volume / 50000, 2))
-    print("收盘价高于MA16", analysis_info['price'] > analysis_info['a_price'], "收盘价MA16趋势向上:", analysis_info['a_price'] > round(aa_price / 5))
+    print("今天的交易额:", analysis_info['t_volume'], "MA16:", analysis_info['at_volume'])
+    print("成交额高于MA16", analysis_info['t_volume'] > analysis_info['at_volume'],
+          "成交额MA16趋势向上:", analysis_info['at_volume'] > aat_volume)
+    print("收盘价高于MA16", analysis_info['price'] > analysis_info['a_price'],
+          "收盘价MA16趋势向上:", analysis_info['a_price'] > aa_price)
 
 
 history_list = GetAndSaveStockData.get_mysql('sh000001')
