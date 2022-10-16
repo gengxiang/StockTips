@@ -79,7 +79,7 @@ def analysis(analysis_info):
 
 # history_list = GetAndSaveStockData.get_mysql('sh000001')
 # print(history_list)
-history_list = GetAndSaveStockData.get_excel('E://StockTips//gengxiang//data//sh000001' + todayStr + '.xlsx')
+history_list = GetAndSaveStockData.get_excel('E://StockTips//gengxiang//data//sh000001.xlsx')
 print(history_list)
 info = get_analysis_info(history_list)
 analysis(info)

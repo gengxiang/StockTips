@@ -65,7 +65,7 @@ def save_excel(stock_list, file_name):
         sheet.cell(row=i, column=7).value = history['t_change']
         i = i + 1
 
-    excel.save(file_name + todayStr + '.xlsx')
+    excel.save(file_name + '.xlsx')
 
 
 # excel 读取
@@ -150,7 +150,7 @@ today_list = [today]
 # # 保存excel
 # save_excel(today_list, 'E://StockTips//gengxiang//data//sh000001')
 # # 读取excel
-# history_list = get_excel('E://StockTips//gengxiang//data//sh000001' + todayStr + '.xlsx')
+# history_list = get_excel('E://StockTips//gengxiang//data//sh000001.xlsx')
 
 save_mysql(today_list)
 history_list = get_mysql('sh000001')
