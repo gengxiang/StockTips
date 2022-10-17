@@ -1,4 +1,5 @@
 import time
+import os
 
 
 # 今天日期
@@ -14,6 +15,9 @@ def get_analysis_info(basic_list):
     """
     total_price = 0
     total_t_volume = 0
+    if len(basic_list) < 20:
+        print("数据样本不足，退出!")
+        exit(-1)
     for history in basic_list:
         total_price = total_price + history['price']
         total_t_volume = total_t_volume + history['t_volume']

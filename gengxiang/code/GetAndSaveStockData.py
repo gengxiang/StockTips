@@ -13,7 +13,7 @@ todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 # http获取当前行情信息
 def get_current(stock_code):
     current = request.urlopen('http://qt.gtimg.cn/q=' + stock_code).read().decode('gbk')
-    # print(current)
+    print(current)
     cur_arr = str(current).split('~')
     stock = {
         't_date': cur_arr[30][0:4] + '-' + cur_arr[30][4:6] + '-' + cur_arr[30][6:8],
@@ -152,26 +152,25 @@ def get_mysql(stock_code):
     return stock_list
 
 
-stock_code = 'sh000001'
-# 获取基础信息
-today = get_current(stock_code)
-# 获取历史信息
-# history_list = get_history('sh000001', '2022-09-01', '2022-10-10')
-today_list = [today]
+def full_dump(stock_code):
+    # 获取基础信息
+    today = get_current(stock_code)
+    # 获取历史信息
+    # history_list = get_history('sh000001', '2022-09-01', '2022-10-10')
+    today_list = [today]
 
-save_mysql(today_list)
-history_list = get_mysql(stock_code)
+    save_mysql(today_list)
+    history_list = get_mysql(stock_code)
 
-excel_file_name = '..\data\\' + stock_code + '.xlsx'
-save_excel(history_list, excel_file_name)
+    excel_file_name = '..\data\\' + stock_code + '.xlsx'
+    save_excel(history_list, excel_file_name)
 
-# history_list = get_mysql('sh000001')
-history_list = get_excel(excel_file_name)
+    # history_list = get_mysql('sh000001')
+    history_list = get_excel(excel_file_name)
 
-AnalysisStockData.analysis(AnalysisStockData.get_analysis_info(history_list))
-
-
+    AnalysisStockData.analysis(AnalysisStockData.get_analysis_info(history_list))
 
 
-
-
+s_code = 'sh000001'
+# s_code = 'sh600536'
+full_dump(s_code)
