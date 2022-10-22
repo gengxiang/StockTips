@@ -497,8 +497,8 @@ def full_dump(stock_code):
     # 获取历史信息
     # history_list = get_history('sh000001', '2022-09-01', '2022-10-10')
 
-    # GetSaveStock.save_mysql(history_list)
-    # history_list = GetSaveStock.get_mysql(stock_code)
+    GetSaveStock.save_mysql(history_list)
+    history_list = GetSaveStock.get_mysql(stock_code)
 
     excel_file_name = '..\data\\' + stock_code + '.xlsx'
     GetSaveStock.save_excel(history_list, excel_file_name)
@@ -509,5 +509,5 @@ def full_dump(stock_code):
 
 for s_code in all_stock_code:
     full_dump(s_code)
-    time.sleep(1)
+    time.sleep(0.1)
 
