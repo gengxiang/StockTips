@@ -1,5 +1,6 @@
 import AnalysisStock
 import GetSaveStock
+import time
 
 all_stock_code = [
     'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
@@ -502,9 +503,11 @@ def full_dump(stock_code):
     excel_file_name = '..\data\\' + stock_code + '.xlsx'
     GetSaveStock.save_excel(history_list, excel_file_name)
     history_list = GetSaveStock.get_excel(excel_file_name)
-
-    AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list))
+    if len(history_list) >= 20:
+        AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list))
 
 
 for s_code in all_stock_code:
     full_dump(s_code)
+    time.sleep(1)
+
