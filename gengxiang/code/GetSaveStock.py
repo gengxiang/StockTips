@@ -55,7 +55,6 @@ def get_history(stock_code, start_date, end_date):
 # excel 保存
 def save_excel(stock_list, file_name):
     if not os.path.isfile(file_name):
-        print(file_name, "文件不存在")
         openpyxl.Workbook().save(file_name)
 
     excel = openpyxl.load_workbook(file_name)

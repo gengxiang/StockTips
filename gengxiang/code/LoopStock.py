@@ -3,7 +3,8 @@ import GetSaveStock
 import time
 
 all_stock_code = [
-    'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
+    'sz399001',
+    'sh000001', 'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
     'sz000010', 'sz000011', 'sz000012', 'sz000014', 'sz000016', 'sz000017', 'sz000019', 'sz000020', 'sz000021',
     'sz000023', 'sz000025', 'sz000026', 'sz000027', 'sz000028', 'sz000029', 'sz000030', 'sz000031', 'sz000032',
     'sz000034', 'sz000035', 'sz000036', 'sz000037', 'sz000038', 'sz000039', 'sz000040', 'sz000042', 'sz000045',
@@ -507,7 +508,10 @@ def full_dump(stock_code):
         AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list))
 
 
+num = 0
 for s_code in all_stock_code:
+    num = num + 1
+    print(num)
     full_dump(s_code)
     time.sleep(0.1)
 
