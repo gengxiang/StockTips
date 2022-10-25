@@ -78,5 +78,8 @@ def analysis(analysis_info):
           "成交额MA16趋势向上:", analysis_info['at_volume'] > aat_volume)
     print("收盘价高于MA16:", analysis_info['price'] > analysis_info['a_price'],
           "收盘价MA16趋势向上:", analysis_info['a_price'] > aa_price)
+    if (analysis_info['t_volume'] > analysis_info['at_volume']) & (analysis_info['at_volume'] > aat_volume) & (analysis_info['price'] > analysis_info['a_price']) & (analysis_info['a_price'] > aa_price):
+        return analysis_info
+
 
 

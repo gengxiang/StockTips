@@ -505,13 +505,14 @@ def full_dump(stock_code):
     GetSaveStock.save_excel(history_list, excel_file_name)
     history_list = GetSaveStock.get_excel(excel_file_name)
     if len(history_list) >= 20:
-        AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list))
+        return AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list))
 
 
-num = 0
-for s_code in all_stock_code:
-    num = num + 1
+select_list = []
+for num in range(0, 2):
     print(num)
-    full_dump(s_code)
-    time.sleep(0.1)
-
+    select = full_dump(all_stock_code[num])
+    if select is not None:
+        select_list.append(all_stock_code[num])
+    time.sleep(0.2)
+print(select_list)
