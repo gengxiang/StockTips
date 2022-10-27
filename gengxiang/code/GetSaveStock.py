@@ -156,7 +156,7 @@ def get_current_batch(stock_codes):
     stocks = []
     current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes)).read().decode('gbk')
     currents = current_str.split(';')
-    print(currents)
+    print(len(currents), "->", currents)
     for ccs in range(0, len(currents)):
         if '\n' != currents[ccs]:
             current_arr = str(currents[ccs]).split('~')

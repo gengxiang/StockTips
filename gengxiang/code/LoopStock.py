@@ -527,11 +527,12 @@ def full_dump_list(stock_code_list):
 
 select_list = []
 l_num = 0
+page_size = 20
 while l_num < len(all_stock_code):
-    print(l_num, '~',  l_num + 10, "->", all_stock_code[l_num: l_num + 10])
-    l_num = l_num + 10
-    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + 10]))
-    time.sleep(0.1)
+    print(l_num, '~',  l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
+    l_num = l_num + page_size
+    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size]))
+    time.sleep(0.1 + random.random())
 print(select_list)
 
 
