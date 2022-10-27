@@ -150,3 +150,25 @@ def get_mysql(stock_code):
         stock_list.append(stock)
     return stock_list
 
+
+# http获取当前行情信息
+def get_current_batch(stock_codes):
+    stocks = []
+    current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes)).read().decode('gbk')
+    currents = current_str.split(';')
+    print(currents)
+    for ccs in range(0, len(currents)):
+        if '\n' != currents[ccs]:
+            current_arr = str(currents[ccs]).split('~')
+            stock = {
+                't_date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],
+                'name': current_arr[1],
+                'code': stock_codes[ccs],
+                'price': float(current_arr[3]),
+                'volume': int(float(current_arr[6])),
+                't_volume': int(float(current_arr[37])),
+                't_change': float(current_arr[38])
+            }
+            stocks.append(stock)
+        # print(currents[ccs])
+    return stocks

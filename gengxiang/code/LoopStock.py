@@ -1,10 +1,10 @@
 import AnalysisStock
 import GetSaveStock
 import time
+import random
 
 all_stock_code = [
-    'sz399001',
-    'sh000001', 'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
+    'sz399001', 'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
     'sz000010', 'sz000011', 'sz000012', 'sz000014', 'sz000016', 'sz000017', 'sz000019', 'sz000020', 'sz000021',
     'sz000023', 'sz000025', 'sz000026', 'sz000027', 'sz000028', 'sz000029', 'sz000030', 'sz000031', 'sz000032',
     'sz000034', 'sz000035', 'sz000036', 'sz000037', 'sz000038', 'sz000039', 'sz000040', 'sz000042', 'sz000045',
@@ -304,7 +304,7 @@ all_stock_code = [
     'sz301296', 'sz301298', 'sz301299', 'sz301300', 'sz301302', 'sz301306', 'sz301308', 'sz301309', 'sz301312',
     'sz301313', 'sz301316', 'sz301318', 'sz301319', 'sz301321', 'sz301326', 'sz301327', 'sz301328', 'sz301330',
     'sz301331', 'sz301333', 'sz301336', 'sz301338', 'sz301339', 'sz301349', 'sz301363', 'sz301366', 'sz301369',
-    'sh600000', 'sh600004', 'sh600006', 'sh600007', 'sh600008', 'sh600009', 'sh600010', 'sh600011', 'sh600012',
+    'sh000001', 'sh600000', 'sh600004', 'sh600006', 'sh600007', 'sh600008', 'sh600009', 'sh600010', 'sh600011',
     'sh600015', 'sh600016', 'sh600017', 'sh600018', 'sh600019', 'sh600020', 'sh600021', 'sh600022', 'sh600023',
     'sh600025', 'sh600026', 'sh600027', 'sh600028', 'sh600029', 'sh600030', 'sh600031', 'sh600032', 'sh600033',
     'sh600035', 'sh600036', 'sh600037', 'sh600038', 'sh600039', 'sh600048', 'sh600050', 'sh600051', 'sh600052',
@@ -487,8 +487,8 @@ all_stock_code = [
     'sh605268', 'sh605277', 'sh605286', 'sh605287', 'sh605288', 'sh605289', 'sh605296', 'sh605298', 'sh605299',
     'sh605300', 'sh605303', 'sh605305', 'sh605318', 'sh605319', 'sh605333', 'sh605336', 'sh605337', 'sh605338',
     'sh605339', 'sh605358', 'sh605365', 'sh605366', 'sh605368', 'sh605369', 'sh605376', 'sh605377', 'sh605378',
-    'sh605388', 'sh605389', 'sh605398', 'sh605399', 'sh605488', 'sh605499', 'sh605500', 'sh605507', 'sh605555',
-    'sh605566', 'sh605567', 'sh605577', 'sh605580', 'sh605588', 'sh605589', 'sh605598', 'sh605599']
+    'sh600012', 'sh605388', 'sh605389', 'sh605398', 'sh605399', 'sh605488', 'sh605499', 'sh605500', 'sh605507',
+    'sh605555', 'sh605566', 'sh605567', 'sh605577', 'sh605580', 'sh605588', 'sh605589', 'sh605598', 'sh605599']
 
 
 def full_dump(stock_code):
@@ -508,11 +508,40 @@ def full_dump(stock_code):
         return AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list))
 
 
+def full_dump_list(stock_code_list):
+    selects = []
+    # 获取基础信息
+    today_list = GetSaveStock.get_current_batch(stock_code_list)
+    for num in range(0, len(stock_code_list)):
+        stock_code = stock_code_list[num]
+        history_list = [today_list[num]]
+        GetSaveStock.save_mysql(history_list)
+        history_list = GetSaveStock.get_mysql(stock_code)
+        excel_file_name = '..\data\\' + stock_code + '.xlsx'
+        GetSaveStock.save_excel(history_list, excel_file_name)
+        history_list = GetSaveStock.get_excel(excel_file_name)
+        if len(history_list) >= 20:
+            selects.append(AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list)))
+    return selects
+
+
 select_list = []
-for num in range(0, 2):
-    print(num)
-    select = full_dump(all_stock_code[num])
-    if select is not None:
-        select_list.append(all_stock_code[num])
-    time.sleep(0.2)
+l_num = 0
+while l_num < len(all_stock_code):
+    print(l_num, '~',  l_num + 10, "->", all_stock_code[l_num: l_num + 10])
+    l_num = l_num + 10
+    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + 10]))
+    time.sleep(0.1)
 print(select_list)
+
+
+# select_list = []
+# for num in range(0, 2):
+#     print(num)
+#     select = full_dump(all_stock_code[num])
+#     if select is not None:
+#         select_list.append(all_stock_code[num])
+#     time.sleep(0.2)
+# print(select_list)
+
+
