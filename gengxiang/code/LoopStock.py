@@ -508,17 +508,19 @@ def full_dump(stock_code):
         return AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list))
 
 
-def full_dump_list(stock_code_list):
+def full_dump_list(stock_code_list, mysql):
     selects = []
     # 获取基础信息
-    today_list = GetSaveStock.get_current_batch(stock_code_list)
+    if mysql:
+        today_list = GetSaveStock.get_current_batch(stock_code_list)
     for num in range(0, len(stock_code_list)):
         stock_code = stock_code_list[num]
-        history_list = [today_list[num]]
-        GetSaveStock.save_mysql(history_list)
-        history_list = GetSaveStock.get_mysql(stock_code)
         excel_file_name = '..\data\\' + stock_code + '.xlsx'
-        GetSaveStock.save_excel(history_list, excel_file_name)
+        if mysql:
+            history_list = [today_list[num]]
+            GetSaveStock.save_mysql(history_list)
+            history_list = GetSaveStock.get_mysql(stock_code)
+            GetSaveStock.save_excel(history_list, excel_file_name)
         history_list = GetSaveStock.get_excel(excel_file_name)
         if len(history_list) >= 20:
             selects.append(AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list)))
@@ -528,10 +530,11 @@ def full_dump_list(stock_code_list):
 select_list = []
 l_num = 0
 page_size = 20
+has_mysql = False
 while l_num < len(all_stock_code):
     print(l_num, '~',  l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
     l_num = l_num + page_size
-    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size]))
+    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], has_mysql))
     time.sleep(0.1 + random.random())
 print(select_list)
 
