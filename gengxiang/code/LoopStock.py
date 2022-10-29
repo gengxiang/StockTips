@@ -533,9 +533,10 @@ page_size = 20
 has_mysql = False
 while l_num < len(all_stock_code):
     print(l_num, '~',  l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
-    l_num = l_num + page_size
+
     select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], has_mysql))
     time.sleep(0.1 + random.random())
+    l_num = l_num + page_size
 print(select_list)
 
 

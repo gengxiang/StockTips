@@ -5,7 +5,6 @@ from urllib import request
 import openpyxl
 import pymysql
 
-
 # 今天日期
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
@@ -154,7 +153,13 @@ def get_mysql(stock_code):
 # http获取当前行情信息
 def get_current_batch(stock_codes):
     stocks = []
-    current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes)).read().decode('gbk')
+    current_str = ''
+    try:
+        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
+    except:
+        print("请求异常等待………………")
+        time.sleep(0.5)
+        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
     currents = current_str.split(';')
     print(len(currents), "->", currents)
     for ccs in range(0, len(currents)):
