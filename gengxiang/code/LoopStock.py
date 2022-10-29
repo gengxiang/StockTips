@@ -530,12 +530,11 @@ def full_dump_list(stock_code_list, mysql):
 select_list = []
 l_num = 0
 page_size = 20
-has_mysql = False
+has_mysql = True
 while l_num < len(all_stock_code):
     print(l_num, '~',  l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
-
     select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], has_mysql))
-    time.sleep(0.1 + random.random())
+    # time.sleep(0.1 + random.random())
     l_num = l_num + page_size
 print(select_list)
 
