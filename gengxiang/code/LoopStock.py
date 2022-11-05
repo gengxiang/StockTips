@@ -505,7 +505,7 @@ def full_dump(stock_code):
     GetSaveStock.save_excel(history_list, excel_file_name)
     history_list = GetSaveStock.get_excel(excel_file_name)
     if len(history_list) >= 20:
-        return AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list))
+        return AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20))
 
 
 def full_dump_list(stock_code_list, mysql):
@@ -523,21 +523,30 @@ def full_dump_list(stock_code_list, mysql):
             GetSaveStock.save_excel(history_list, excel_file_name)
         history_list = GetSaveStock.get_excel(excel_file_name)
         if len(history_list) >= 20:
-            selects.append(AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list)))
+            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
+            if nn is not None:
+                selects.append(nn)
+        else:
+            nn = AnalysisStock.analysis(
+                AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
+            if nn is not None:
+                selects.append(nn)
     return selects
 
 
 select_list = []
 l_num = 0
 page_size = 20
-has_mysql = True
+# has_mysql = True
+has_mysql = False
 while l_num < len(all_stock_code):
-    print(l_num, '~',  l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
+    print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
     select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], has_mysql))
     # time.sleep(0.1 + random.random())
     l_num = l_num + page_size
-print(select_list)
 
+for ss in select_list:
+    print(ss)
 
 # select_list = []
 # for num in range(0, 2):
@@ -547,5 +556,3 @@ print(select_list)
 #         select_list.append(all_stock_code[num])
 #     time.sleep(0.2)
 # print(select_list)
-
-
