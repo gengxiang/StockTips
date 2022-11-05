@@ -544,7 +544,7 @@ while l_num < len(all_stock_code):
     select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], has_mysql))
     # time.sleep(0.1 + random.random())
     l_num = l_num + page_size
-
+print("趋势分析满足要求的数量：--->", len(select_list))
 for ss in select_list:
     print(ss)
 

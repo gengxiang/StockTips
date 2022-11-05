@@ -58,7 +58,8 @@ def get_analysis_info(basic_list, ma, llen):
         'at_volume_3': round(t4 / 10000 / ma, 2),
         'at_volume_4': round(t5 / 10000 / ma, 2)
     }
-
+    print("")
+    print("趋势分析使用均线", ma, "--->", analysis_info)
     return analysis_info
 
 
@@ -81,7 +82,8 @@ def analysis(analysis_info):
           "成交额MA趋势向上:", analysis_info['at_volume'] > aat_volume)
     print("收盘价高于MA:", analysis_info['price'] > analysis_info['a_price'],
           "收盘价MA趋势向上:", analysis_info['a_price'] > aa_price)
-    if (analysis_info['t_volume'] > analysis_info['at_volume']) & (analysis_info['at_volume'] > aat_volume) & (analysis_info['price'] > analysis_info['a_price']) & (analysis_info['a_price'] > aa_price):
+    print("====================================================")
+    if (analysis_info['t_volume'] > 1.4 * analysis_info['at_volume']) & (analysis_info['at_volume'] > 1.1 * aat_volume) & (analysis_info['price'] > analysis_info['a_price']) & (analysis_info['a_price'] > aa_price):
         return analysis_info
 
 
