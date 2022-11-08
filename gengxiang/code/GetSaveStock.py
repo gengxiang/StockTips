@@ -166,13 +166,16 @@ def get_current_batch(stock_codes):
         if '\n' != currents[ccs]:
             current_arr = str(currents[ccs]).split('~')
             stock = {
-                't_date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],
-                'name': current_arr[1],
-                'code': stock_codes[ccs],
-                'price': float(current_arr[3]),
-                'volume': int(float(current_arr[6])),
-                't_volume': int(float(current_arr[37])),
-                't_change': float(current_arr[38])
+                'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
+                'name': current_arr[1],  # 名称
+                'code': stock_codes[ccs],  # 编码
+                'price': float(current_arr[3]),  # 收盘价格
+                'rf': float(current_arr[31]),  # 涨跌幅%
+                'volume': int(float(current_arr[37])),  # 成交额（万元）
+                'change': float(current_arr[38]),  # 换手率
+                'pe': float(current_arr[39]),  # 市盈率
+                'value': float(current_arr[45]),  # 总市值
+                'pb': float(current_arr[46]),  # 市净率
             }
             stocks.append(stock)
         # print(currents[ccs])
