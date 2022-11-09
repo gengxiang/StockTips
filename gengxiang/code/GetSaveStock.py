@@ -153,7 +153,6 @@ def get_mysql(stock_code):
 # http获取当前行情信息
 def get_current_batch(stock_codes):
     stocks = []
-    current_str = ''
     try:
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
     except:
@@ -161,7 +160,7 @@ def get_current_batch(stock_codes):
         time.sleep(0.8)
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
     currents = current_str.split(';')
-    print(len(currents), "->", currents)
+    # print(len(currents), "->", currents)
     for ccs in range(0, len(currents)):
         if '\n' != currents[ccs]:
             current_arr = str(currents[ccs]).split('~')
@@ -170,13 +169,14 @@ def get_current_batch(stock_codes):
                 'name': current_arr[1],  # 名称
                 'code': stock_codes[ccs],  # 编码
                 'price': float(current_arr[3]),  # 收盘价格
-                'rf': float(current_arr[31]),  # 涨跌幅%
-                'volume': int(float(current_arr[37])),  # 成交额（万元）
-                'change': float(current_arr[38]),  # 换手率
-                'pe': float(current_arr[39]),  # 市盈率
-                'value': float(current_arr[45]),  # 总市值
-                'pb': float(current_arr[46]),  # 市净率
+                'cje': int(float(current_arr[37])),  # 成交额（万元）
+                'zf': float(current_arr[32]),  # 涨跌幅%
+                'lb': float(current_arr[49]),  # 量比
+                'hsl': float(current_arr[38]),  # 换手率
+                'zsz': float(current_arr[45]),  # 总市值
+                'syl': float(current_arr[39]),  # 市盈率
+                'sjl': float(current_arr[46]),  # 市净率
             }
             stocks.append(stock)
-        # print(currents[ccs])
+            print(current_arr[1], "---->", stock)
     return stocks

@@ -515,7 +515,7 @@ def full_dump_list(stock_code_list, mysql):
         today_list = GetSaveStock.get_current_batch(stock_code_list)
     for num in range(0, len(stock_code_list)):
         stock_code = stock_code_list[num]
-        excel_file_name = '..\data\\' + stock_code + '.xlsx'
+        excel_file_name = '..\data_new\\' + stock_code + '.xlsx'
         if mysql:
             history_list = [today_list[num]]
             GetSaveStock.save_mysql(history_list)
