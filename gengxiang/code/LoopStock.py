@@ -491,23 +491,6 @@ all_stock_code = [
     'sh605555', 'sh605566', 'sh605567', 'sh605577', 'sh605580', 'sh605588', 'sh605589', 'sh605598', 'sh605599']
 
 
-def full_dump(stock_code):
-    # 获取基础信息
-    today = GetSaveStock.get_current(stock_code)
-    history_list = [today]
-    # 获取历史信息
-    # history_list = get_history('sh000001', '2022-09-01', '2022-10-10')
-
-    GetSaveStock.save_mysql(history_list)
-    history_list = GetSaveStock.get_mysql(stock_code)
-
-    excel_file_name = '..\data\\' + stock_code + '.xlsx'
-    GetSaveStock.save_excel(history_list, excel_file_name)
-    history_list = GetSaveStock.get_excel(excel_file_name)
-    if len(history_list) >= 20:
-        return AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20))
-
-
 def full_dump_list(stock_code_list, mysql):
     selects = []
     # 获取基础信息
@@ -522,23 +505,23 @@ def full_dump_list(stock_code_list, mysql):
             history_list = GetSaveStock.get_mysql(stock_code)
             GetSaveStock.save_excel(history_list, excel_file_name)
         history_list = GetSaveStock.get_excel(excel_file_name)
-        if len(history_list) >= 20:
-            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
-            if nn is not None:
-                selects.append(nn)
-        else:
-            nn = AnalysisStock.analysis(
-                AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
-            if nn is not None:
-                selects.append(nn)
+        # if len(history_list) >= 20:
+        #     nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
+        #     if nn is not None:
+        #         selects.append(nn)
+        # else:
+        #     nn = AnalysisStock.analysis(
+        #         AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
+        #     if nn is not None:
+        #         selects.append(nn)
     return selects
 
 
 select_list = []
 l_num = 0
 page_size = 20
-# has_mysql = True
-has_mysql = False
+has_mysql = True
+# has_mysql = False
 while l_num < len(all_stock_code):
     print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
     select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], has_mysql))
