@@ -536,7 +536,7 @@ def full_dump_list(stock_code_list, mysql):
 
 select_list = []
 l_num = 0
-page_size = 20
+page_size = 30
 has_mysql = True
 # has_mysql = False
 while l_num < len(all_stock_code):
@@ -545,8 +545,7 @@ while l_num < len(all_stock_code):
     # time.sleep(0.1 + random.random())
     l_num = l_num + page_size
 print("趋势分析满足要求的数量：--->", len(select_list))
-for ss in select_list:
-    print(ss)
+print(select_list)
 
 # select_list = []
 # for num in range(0, 2):
