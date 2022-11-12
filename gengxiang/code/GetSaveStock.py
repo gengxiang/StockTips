@@ -174,7 +174,7 @@ def get_current_batch(stock_codes):
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
     except:
         print("请求异常等待………………")
-        time.sleep(0.8)
+        time.sleep(5)
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
     currents = current_str.split(';')
     # print(len(currents), "->", currents)
