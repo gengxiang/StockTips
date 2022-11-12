@@ -84,7 +84,7 @@ def analysis(analysis_info):
           "收盘价MA趋势向上:", analysis_info['a_price'] > aa_price)
     print("====================================================")
     if (analysis_info['t_volume'] > 1.4 * analysis_info['at_volume']) & (analysis_info['at_volume'] > 1.1 * aat_volume) & (analysis_info['price'] > analysis_info['a_price']) & (analysis_info['a_price'] > aa_price):
-        return analysis_info
+        return analysis_info["name"]
 
 
 
