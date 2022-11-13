@@ -505,20 +505,20 @@ def full_dump_list(stock_code_list, mysql):
             history_list = GetSaveStock.get_mysql(stock_code)
             GetSaveStock.save_excel(history_list, excel_file_name)
         history_list = GetSaveStock.get_excel(excel_file_name)
-        if len(history_list) >= 20:
-            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
-            if nn is not None:
-                selects.append(nn)
-        else:
-            nn = AnalysisStock.analysis(
-                AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
-            if nn is not None:
-                selects.append(nn)
+        # if len(history_list) >= 20:
+        #     nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
+        #     if nn is not None:
+        #         selects.append(nn)
+        # else:
+        #     nn = AnalysisStock.analysis(
+        #         AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
+        #     if nn is not None:
+        #         selects.append(nn)
     return selects
 
 
 select_list = []
-l_num = 4000
+l_num = 0
 page_size = 20
 has_mysql = True
 # has_mysql = False

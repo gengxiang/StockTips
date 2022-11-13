@@ -18,11 +18,13 @@ def get_analysis_info(basic_list, ma, llen):
 
     total_price = 0
     total_t_volume = 0
+    total_change = 0
     stop_times = 0
     print(basic_list)
     for history in basic_list:
         total_price = total_price + history['price']
         total_t_volume = total_t_volume + history['amo']
+        total_change = total_change + history['hs']
         if history['amp'] > 9.5:
             stop_times = stop_times + 1
 
@@ -47,6 +49,7 @@ def get_analysis_info(basic_list, ma, llen):
         'pb': basic_list[0]['pb'],
         'price': basic_list[0]['price'],
         'times': stop_times,
+        'ahs': round(total_change/len(basic_list), 2),
         'aprice-0': round(p1 / ma, 2),
         'aprice-1': round(p2 / ma, 2),
         'aprice-2': round(p3 / ma, 2),
@@ -68,8 +71,11 @@ def analysis(analysis_info):
     if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '地产' in analysis_info['name']:
         print("ST 、银行、地产过滤--->", analysis_info)
         return
-    elif analysis_info['change'] < 1.5 and analysis_info['at_volume'] < 0.5:
+    elif analysis_info['ahs'] < 1.5 and analysis_info['at_volume'] < 0.5:
         print("换手、成交额过滤--->", analysis_info)
+        return
+    elif analysis_info['times'] < 1:
+        print("涨停过滤--->", analysis_info)
         return
 
     aa_price = round((analysis_info['aprice-0'] + analysis_info['aprice-1'] + analysis_info['aprice-2'] +
