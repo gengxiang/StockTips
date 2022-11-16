@@ -1,6 +1,4 @@
 import time
-import os
-
 
 # 今天日期
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -67,7 +65,7 @@ def analysis(analysis_info):
     if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '地产' in analysis_info['name']:
         print("ST 、银行、地产过滤--->", analysis_info)
         return
-    elif analysis_info['change'] < 1.5 and analysis_info['at_volume'] < 0.5:
+    elif analysis_info['change'] < 2 and analysis_info['at_volume'] < 0.5:
         print("换手、成交额过滤--->", analysis_info)
         return
 
@@ -83,8 +81,7 @@ def analysis(analysis_info):
     print("收盘价高于MA:", analysis_info['price'] > analysis_info['a_price'],
           "收盘价MA趋势向上:", analysis_info['a_price'] > aa_price)
     print("====================================================")
-    if (analysis_info['t_volume'] > 1.4 * analysis_info['at_volume']) & (analysis_info['at_volume'] > 1.1 * aat_volume) & (analysis_info['price'] > analysis_info['a_price']) & (analysis_info['a_price'] > aa_price):
+    if (analysis_info['t_volume'] > 1.4 * analysis_info['at_volume']) & (
+            analysis_info['at_volume'] > 1.2 * aat_volume) & (analysis_info['price'] > analysis_info['a_price']) & (
+            analysis_info['a_price'] > aa_price):
         return analysis_info["name"]
-
-
-
