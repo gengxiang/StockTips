@@ -2,6 +2,7 @@ import json
 import os
 import time
 from urllib import request
+
 import openpyxl
 import pymysql
 
@@ -104,7 +105,7 @@ def get_excel(file_name):
             'code': (refer_sheet.cell(row=row, column=3)).value,
             'price': float((refer_sheet.cell(row=row, column=4)).value),
             'amo': int(float((refer_sheet.cell(row=row, column=5)).value)),
-            'amp': int(float((refer_sheet.cell(row=row, column=6)).value)),
+            'amp': float((refer_sheet.cell(row=row, column=6)).value),
             'qrr': float((refer_sheet.cell(row=row, column=7)).value),
             'mc': float((refer_sheet.cell(row=row, column=8)).value),
             'hs': float((refer_sheet.cell(row=row, column=9)).value),

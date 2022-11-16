@@ -1,7 +1,5 @@
 import AnalysisStock
 import GetSaveStock
-import time
-import random
 
 all_stock_code = [
     'sz399001', 'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
@@ -505,15 +503,15 @@ def full_dump_list(stock_code_list, mysql):
             history_list = GetSaveStock.get_mysql(stock_code)
             GetSaveStock.save_excel(history_list, excel_file_name)
         history_list = GetSaveStock.get_excel(excel_file_name)
-        # if len(history_list) >= 20:
-        #     nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
-        #     if nn is not None:
-        #         selects.append(nn)
-        # else:
-        #     nn = AnalysisStock.analysis(
-        #         AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
-        #     if nn is not None:
-        #         selects.append(nn)
+        if len(history_list) >= 20:
+            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
+            if nn is not None:
+                selects.append(nn)
+        else:
+            nn = AnalysisStock.analysis(
+                AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
+            if nn is not None:
+                selects.append(nn)
     return selects
 
 

@@ -1,6 +1,4 @@
 import time
-import os
-
 
 # 今天日期
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -71,7 +69,7 @@ def analysis(analysis_info):
     if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '地产' in analysis_info['name']:
         print("ST 、银行、地产过滤--->", analysis_info)
         return
-    elif analysis_info['ahs'] < 1.5 and analysis_info['at_volume'] < 0.5:
+    elif analysis_info['hs'] < 1.5 and analysis_info['aamo-0'] < 0.5:
         print("换手、成交额过滤--->", analysis_info)
         return
     elif analysis_info['times'] < 1:
@@ -85,13 +83,11 @@ def analysis(analysis_info):
     print(analysis_info['date'], "---->", analysis_info['name'], analysis_info['code'])
     print("今天的收盘价:", analysis_info['price'], "MA:", analysis_info['aprice-0'])
     print("今天的交易额:", analysis_info['amo'], "(亿)", "MA:", analysis_info['aamo-0'], "(亿)")
-    print("成交额高于MA:", analysis_info['amo'] > analysis_info['aamo-0'],
-          "成交额MA趋势向上:", analysis_info['aamo-0'] > aat_volume)
-    print("收盘价高于MA:", analysis_info['price'] > analysis_info['aprice-0'],
-          "收盘价MA趋势向上:", analysis_info['aprice-0'] > aa_price)
+    print("成交额高于MA:", analysis_info['amo'] >= analysis_info['aamo-0'],
+          "成交额MA趋势向上:", analysis_info['aamo-0'] >= aat_volume)
+    print("收盘价高于MA:", analysis_info['price'] >= analysis_info['aprice-0'],
+          "收盘价MA趋势向上:", analysis_info['aprice-0'] >= aa_price)
     print("====================================================")
-    if (analysis_info['amo'] > 1.4 * analysis_info['aamo-0']) & (analysis_info['aamo-0'] > 1.1 * aat_volume) & (analysis_info['price'] > analysis_info['aprice-0']) & (analysis_info['aprice-0'] > aa_price):
+    if (analysis_info['amo'] >= 1.4 * analysis_info['aamo-0']) & (analysis_info['aamo-0'] >= 1.1 * aat_volume) & (
+            analysis_info['price'] >= analysis_info['aprice-0']) & (analysis_info['aprice-0'] >= aa_price):
         return analysis_info
-
-
-
