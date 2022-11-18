@@ -66,12 +66,15 @@ def get_analysis_info(basic_list, ma, llen):
 
 
 def analysis(analysis_info):
+    # 非ST 非银行 非地产
     if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '地产' in analysis_info['name']:
         print("ST 、银行、地产过滤--->", analysis_info)
         return
-    elif analysis_info['hs'] < 1.5 and analysis_info['aamo-0'] < 0.5:
+    # 平均换手率小于1.2 或大于7 ,平均成交额小于5000w
+    elif 1.2 > analysis_info['ahs'] > 7 and analysis_info['aamo-0'] < 0.5:
         print("换手、成交额过滤--->", analysis_info)
         return
+    # 未涨停
     elif analysis_info['times'] < 1:
         print("涨停过滤--->", analysis_info)
         return
@@ -88,6 +91,6 @@ def analysis(analysis_info):
     print("收盘价高于MA:", analysis_info['price'] >= analysis_info['aprice-0'],
           "收盘价MA趋势向上:", analysis_info['aprice-0'] >= aa_price)
     print("====================================================")
-    if (analysis_info['amo'] >= 1.4 * analysis_info['aamo-0']) & (analysis_info['aamo-0'] >= 1.1 * aat_volume) & (
+    if (analysis_info['amo'] >= 1.2 * analysis_info['aamo-0']) & (analysis_info['aamo-0'] >= 1.1 * aat_volume) & (
             analysis_info['price'] >= analysis_info['aprice-0']) & (analysis_info['aprice-0'] >= aa_price):
         return analysis_info

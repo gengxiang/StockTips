@@ -517,7 +517,7 @@ def full_dump_list(stock_code_list, mysql):
 
 select_list = []
 l_num = 0
-page_size = 20
+page_size = 30
 has_mysql = True
 # has_mysql = False
 while l_num < len(all_stock_code):
