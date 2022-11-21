@@ -1,7 +1,5 @@
 import AnalysisStock
 import GetSaveStock
-import time
-import random
 
 all_stock_code = [
     'sz399001', 'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
@@ -535,7 +533,7 @@ def full_dump_list(stock_code_list, mysql):
 
 
 select_list = []
-l_num = 0
+l_num = 1710
 page_size = 30
 has_mysql = True
 # has_mysql = False
