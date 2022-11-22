@@ -26,16 +26,26 @@ def get_analysis_info(basic_list, ma, llen):
         if history['amp'] > 9.5:
             stop_times = stop_times + 1
 
-    p1 = total_price - basic_list[llen-1]['price'] - basic_list[llen-2]['price'] - basic_list[llen-3]['price'] - basic_list[llen-4]['price']
-    p2 = total_price - basic_list[llen-1]['price'] - basic_list[llen-2]['price'] - basic_list[llen-3]['price'] - basic_list[llen-ma-4]['price']
-    p3 = total_price - basic_list[llen-1]['price'] - basic_list[llen-2]['price'] - basic_list[llen-ma-4]['price'] - basic_list[llen-ma-3]['price']
-    p4 = total_price - basic_list[llen-1]['price'] - basic_list[llen-ma-4]['price'] - basic_list[llen-ma-3]['price'] - basic_list[llen-ma-2]['price']
-    p5 = total_price - basic_list[llen-ma-4]['price'] - basic_list[llen-ma-3]['price'] - basic_list[llen-ma-2]['price'] - basic_list[llen-ma-1]['price']
-    t1 = total_t_volume - basic_list[llen-1]['amo'] - basic_list[llen-2]['amo'] - basic_list[llen-3]['amo'] - basic_list[llen-4]['amo']
-    t2 = total_t_volume - basic_list[llen-1]['amo'] - basic_list[llen-2]['amo'] - basic_list[llen-3]['amo'] - basic_list[llen-ma-4]['amo']
-    t3 = total_t_volume - basic_list[llen-1]['amo'] - basic_list[llen-2]['amo'] - basic_list[llen-ma-4]['amo'] - basic_list[llen-ma-3]['amo']
-    t4 = total_t_volume - basic_list[llen-1]['amo'] - basic_list[llen-ma-4]['amo'] - basic_list[llen-ma-3]['amo'] - basic_list[llen-ma-2]['amo']
-    t5 = total_t_volume - basic_list[llen-ma-4]['amo'] - basic_list[llen-ma-3]['amo'] - basic_list[llen-ma-2]['amo'] - basic_list[llen-ma-1]['amo']
+    p1 = total_price - basic_list[llen - 1]['price'] - basic_list[llen - 2]['price'] - basic_list[llen - 3]['price'] - \
+         basic_list[llen - 4]['price']
+    p2 = total_price - basic_list[llen - 1]['price'] - basic_list[llen - 2]['price'] - basic_list[llen - 3]['price'] - \
+         basic_list[llen - ma - 4]['price']
+    p3 = total_price - basic_list[llen - 1]['price'] - basic_list[llen - 2]['price'] - basic_list[llen - ma - 4][
+        'price'] - basic_list[llen - ma - 3]['price']
+    p4 = total_price - basic_list[llen - 1]['price'] - basic_list[llen - ma - 4]['price'] - basic_list[llen - ma - 3][
+        'price'] - basic_list[llen - ma - 2]['price']
+    p5 = total_price - basic_list[llen - ma - 4]['price'] - basic_list[llen - ma - 3]['price'] - \
+         basic_list[llen - ma - 2]['price'] - basic_list[llen - ma - 1]['price']
+    t1 = total_t_volume - basic_list[llen - 1]['amo'] - basic_list[llen - 2]['amo'] - basic_list[llen - 3]['amo'] - \
+         basic_list[llen - 4]['amo']
+    t2 = total_t_volume - basic_list[llen - 1]['amo'] - basic_list[llen - 2]['amo'] - basic_list[llen - 3]['amo'] - \
+         basic_list[llen - ma - 4]['amo']
+    t3 = total_t_volume - basic_list[llen - 1]['amo'] - basic_list[llen - 2]['amo'] - basic_list[llen - ma - 4]['amo'] - \
+         basic_list[llen - ma - 3]['amo']
+    t4 = total_t_volume - basic_list[llen - 1]['amo'] - basic_list[llen - ma - 4]['amo'] - basic_list[llen - ma - 3][
+        'amo'] - basic_list[llen - ma - 2]['amo']
+    t5 = total_t_volume - basic_list[llen - ma - 4]['amo'] - basic_list[llen - ma - 3]['amo'] - \
+         basic_list[llen - ma - 2]['amo'] - basic_list[llen - ma - 1]['amo']
 
     analysis_info = {
         'date': basic_list[0]['date'],
@@ -47,7 +57,7 @@ def get_analysis_info(basic_list, ma, llen):
         'pb': basic_list[0]['pb'],
         'price': basic_list[0]['price'],
         'times': stop_times,
-        'ahs': round(total_change/len(basic_list), 2),
+        'ahs': round(total_change / len(basic_list), 2),
         'aprice-0': round(p1 / ma, 2),
         'aprice-1': round(p2 / ma, 2),
         'aprice-2': round(p3 / ma, 2),
@@ -71,7 +81,7 @@ def analysis(analysis_info):
         print("ST 、银行、地产过滤--->", analysis_info)
         return
     # 平均换手率小于1.2 或大于7 ,平均成交额小于5000w
-    elif 1.2 > analysis_info['ahs'] > 7 and analysis_info['aamo-0'] < 0.5:
+    elif 1.2 > analysis_info['ahs'] or analysis_info['hs'] > 8 or analysis_info['aamo-0'] < 0.5:
         print("换手、成交额过滤--->", analysis_info)
         return
     # 未涨停

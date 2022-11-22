@@ -515,6 +515,10 @@ def full_dump_list(stock_code_list, mysql):
     return selects
 
 
+# select_list = ["sh600050"]
+# full_dump_list(select_list, False)
+# exit()
+
 select_list = []
 l_num = 0
 page_size = 30
@@ -528,11 +532,3 @@ print("趋势分析满足要求的数量：--->", len(select_list))
 for ss in select_list:
     print(ss)
 
-# select_list = []
-# for num in range(0, 2):
-#     print(num)
-#     select = full_dump(all_stock_code[num])
-#     if select is not None:
-#         select_list.append(all_stock_code[num])
-#     time.sleep(0.2)
-# print(select_list)
