@@ -177,8 +177,9 @@ def get_current_batch(stock_codes):
         print("请求异常等待………………")
         time.sleep(5)
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
+    with open("..\data_new\\1128.txt", "a") as file:
+        file.write(current_str)
     currents = current_str.split(';')
-    # print(len(currents), "->", currents)
     for ccs in range(0, len(currents)):
         if '\n' != currents[ccs]:
             current_arr = str(currents[ccs]).split('~')

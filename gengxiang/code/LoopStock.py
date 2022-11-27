@@ -1,4 +1,3 @@
-import AnalysisStock
 import GetSaveStock
 
 all_stock_code = [
@@ -494,24 +493,24 @@ def full_dump_list(stock_code_list, mysql):
     # 获取基础信息
     if mysql:
         today_list = GetSaveStock.get_current_batch(stock_code_list)
-    for num in range(0, len(stock_code_list)):
-        stock_code = stock_code_list[num]
-        excel_file_name = '..\data_new\\' + stock_code + '.xlsx'
-        if mysql:
-            history_list = [today_list[num]]
-            GetSaveStock.save_mysql(history_list)
-            history_list = GetSaveStock.get_mysql(stock_code)
-            GetSaveStock.save_excel(history_list, excel_file_name)
-        history_list = GetSaveStock.get_excel(excel_file_name)
-        if len(history_list) >= 20:
-            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
-            if nn is not None:
-                selects.append(nn)
-        else:
-            nn = AnalysisStock.analysis(
-                AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
-            if nn is not None:
-                selects.append(nn)
+    # for num in range(0, len(stock_code_list)):
+    #     stock_code = stock_code_list[num]
+    #     excel_file_name = '..\data_new\\' + stock_code + '.xlsx'
+    #     if mysql:
+    #         history_list = [today_list[num]]
+    #         GetSaveStock.save_mysql(history_list)
+    #         history_list = GetSaveStock.get_mysql(stock_code)
+    #         GetSaveStock.save_excel(history_list, excel_file_name)
+    #     history_list = GetSaveStock.get_excel(excel_file_name)
+    #     if len(history_list) >= 20:
+    #         nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
+    #         if nn is not None:
+    #             selects.append(nn)
+    #     else:
+    #         nn = AnalysisStock.analysis(
+    #             AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
+    #         if nn is not None:
+    #             selects.append(nn)
     return selects
 
 
