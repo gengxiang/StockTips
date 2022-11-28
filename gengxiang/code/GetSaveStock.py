@@ -154,7 +154,6 @@ def get_mysql(stock_code):
 # http获取当前行情信息
 def get_current_batch(stock_codes):
     stocks = []
-    current_str = ''
     try:
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
     except:
