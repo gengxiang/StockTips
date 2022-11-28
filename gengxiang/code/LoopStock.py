@@ -533,7 +533,7 @@ def full_dump_list(stock_code_list, mysql):
 
 
 select_list = []
-l_num = 1710
+l_num = 0
 page_size = 30
 has_mysql = True
 # has_mysql = False
