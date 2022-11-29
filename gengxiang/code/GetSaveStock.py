@@ -169,7 +169,7 @@ def get_mysql(stock_code):
 
 
 # http获取当前行情信息
-def get_current_batch(stock_codes):
+def get_current_batch(stock_codes, write_file):
     stocks = []
     try:
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
@@ -177,16 +177,43 @@ def get_current_batch(stock_codes):
         print("请求异常等待………………")
         time.sleep(5)
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
-    with open("..\data_new\\1128.txt", "a") as file:
-        file.write(current_str)
-    currents = current_str.split(';')
-    for ccs in range(0, len(currents)):
-        if '\n' != currents[ccs]:
-            current_arr = str(currents[ccs]).split('~')
+
+    if write_file:
+        with open("..\data_new\stocks.txt", "a") as file:
+            file.write(current_str)
+            print("写入文件->", current_str)
+    else:
+        currents = current_str.split(';')
+        print(len(currents), "->", currents)
+        for ccs in range(0, len(currents)):
+            if '\n' != currents[ccs]:
+                current_arr = str(currents[ccs]).split('~')
+                stock = {
+                    'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
+                    'name': current_arr[1],  # 名称
+                    'code': stock_codes[ccs],  # 编码
+                    'price': float(current_arr[3]),  # 收盘价格
+                    'amo': int(float(current_arr[37])),  # 成交额（万元）
+                    'amp': float(current_arr[32]),  # 涨跌幅%
+                    'qrr': float(current_arr[49]),  # 量比
+                    'hs': float(current_arr[38]),  # 换手率
+                    'mc': float(current_arr[45]),  # 总市值
+                    'per': float(current_arr[39]),  # 市盈率
+                    'pb': float(current_arr[46]),  # 市净率
+                }
+                stocks.append(stock)
+    return stocks
+
+
+def get_current_file():
+    with open("..\data_new\stocks.txt", "r") as file:
+        line = file.readline()
+        while line:
+            current_arr = str(line).split('~')
             stock = {
                 'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
                 'name': current_arr[1],  # 名称
-                'code': stock_codes[ccs],  # 编码
+                'code': current_arr[0][2:10],  # 编码
                 'price': float(current_arr[3]),  # 收盘价格
                 'amo': int(float(current_arr[37])),  # 成交额（万元）
                 'amp': float(current_arr[32]),  # 涨跌幅%
@@ -196,6 +223,9 @@ def get_current_batch(stock_codes):
                 'per': float(current_arr[39]),  # 市盈率
                 'pb': float(current_arr[46]),  # 市净率
             }
-            stocks.append(stock)
-            print(current_arr[1], "---->", stock)
-    return stocks
+            stocks = [stock]
+            save_mysql(stocks)
+            line = file.readline()
+
+
+get_current_file()

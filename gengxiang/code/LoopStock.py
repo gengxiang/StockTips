@@ -1,3 +1,4 @@
+import AnalysisStock
 import GetSaveStock
 
 all_stock_code = [
@@ -218,8 +219,6 @@ all_stock_code = [
     'sz300449', 'sz300450', 'sz300451', 'sz300452', 'sz300453', 'sz300454', 'sz300455', 'sz300456', 'sz300457',
     'sz300458', 'sz300459', 'sz300460', 'sz300461', 'sz300462', 'sz300463', 'sz300464', 'sz300465', 'sz300466',
     'sz300467', 'sz300468', 'sz300469', 'sz300470', 'sz300471', 'sz300472', 'sz300473', 'sz300474', 'sz300475',
-    'sz300476', 'sz300477', 'sz300478', 'sz300479', 'sz300480', 'sz300481', 'sz300482', 'sz300483', 'sz300484',
-    'sz300485', 'sz300486', 'sz300487', 'sz300488', 'sz300489', 'sz300490', 'sz300491', 'sz300492', 'sz300493',
     'sz300494', 'sz300495', 'sz300496', 'sz300497', 'sz300498', 'sz300499', 'sz300500', 'sz300501', 'sz300502',
     'sz300503', 'sz300504', 'sz300505', 'sz300506', 'sz300507', 'sz300508', 'sz300509', 'sz300510', 'sz300511',
     'sz300512', 'sz300513', 'sz300514', 'sz300515', 'sz300516', 'sz300517', 'sz300518', 'sz300519', 'sz300520',
@@ -488,46 +487,46 @@ all_stock_code = [
     'sh605555', 'sh605566', 'sh605567', 'sh605577', 'sh605580', 'sh605588', 'sh605589', 'sh605598', 'sh605599']
 
 
-def full_dump_list(stock_code_list, mysql):
+def full_dump_list(stock_code_list, run_mysql, w_file):
     selects = []
+    if w_file:
+        GetSaveStock.get_current_batch(stock_code_list, True)
+        return selects
     # 获取基础信息
-    if mysql:
-        today_list = GetSaveStock.get_current_batch(stock_code_list)
-    # for num in range(0, len(stock_code_list)):
-    #     stock_code = stock_code_list[num]
-    #     excel_file_name = '..\data_new\\' + stock_code + '.xlsx'
-    #     if mysql:
-    #         history_list = [today_list[num]]
-    #         GetSaveStock.save_mysql(history_list)
-    #         history_list = GetSaveStock.get_mysql(stock_code)
-    #         GetSaveStock.save_excel(history_list, excel_file_name)
-    #     history_list = GetSaveStock.get_excel(excel_file_name)
-    #     if len(history_list) >= 20:
-    #         nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
-    #         if nn is not None:
-    #             selects.append(nn)
-    #     else:
-    #         nn = AnalysisStock.analysis(
-    #             AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
-    #         if nn is not None:
-    #             selects.append(nn)
+    if run_mysql:
+        today_list = GetSaveStock.get_current_batch(stock_code_list, False)
+    for num in range(0, len(stock_code_list)):
+        stock_code = stock_code_list[num]
+        excel_file_name = '..\data_new\\' + stock_code + '.xlsx'
+        if run_mysql:
+            history_list = [today_list[num]]
+            GetSaveStock.save_mysql(history_list)
+            history_list = GetSaveStock.get_mysql(stock_code)
+            GetSaveStock.save_excel(history_list, excel_file_name)
+        history_list = GetSaveStock.get_excel(excel_file_name)
+        if len(history_list) >= 20:
+            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
+            if nn is not None:
+                selects.append(nn)
+        else:
+            nn = AnalysisStock.analysis(
+                AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
+            if nn is not None:
+                selects.append(nn)
     return selects
 
-
-# select_list = ["sh600050"]
-# full_dump_list(select_list, False)
-# exit()
 
 select_list = []
 l_num = 0
 page_size = 30
-has_mysql = True
-# has_mysql = False
+write_file = False
+run_with_mysql = True
+if write_file:
+    with open("..\data_new\stocks.txt", "w") as file:
+        file.write("")
 while l_num < len(all_stock_code):
     print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
-    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], has_mysql))
+    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, write_file))
     l_num = l_num + page_size
 print("趋势分析满足要求的数量：--->", len(select_list))
-for ss in select_list:
-    print(ss)
-
+print(select_list)
