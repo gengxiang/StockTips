@@ -506,15 +506,18 @@ def full_dump(stock_code):
         return AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20))
 
 
-def full_dump_list(stock_code_list, mysql):
+def full_dump_list(stock_code_list, run_mysql, file):
     selects = []
+    if file:
+        GetSaveStock.get_current_batch(stock_code_list, True)
+        return selects
     # 获取基础信息
-    if mysql:
-        today_list = GetSaveStock.get_current_batch(stock_code_list)
+    if run_mysql:
+        today_list = GetSaveStock.get_current_batch(stock_code_list, False)
     for num in range(0, len(stock_code_list)):
         stock_code = stock_code_list[num]
         excel_file_name = '..\data\\' + stock_code + '.xlsx'
-        if mysql:
+        if run_mysql:
             history_list = [today_list[num]]
             GetSaveStock.save_mysql(history_list)
             history_list = GetSaveStock.get_mysql(stock_code)
@@ -535,12 +538,14 @@ def full_dump_list(stock_code_list, mysql):
 select_list = []
 l_num = 0
 page_size = 30
-has_mysql = True
-# has_mysql = False
+write_file = False
+run_with_mysql = True
+if write_file:
+    with open("..\data\stocks.txt", "w") as file:
+        file.write("")
 while l_num < len(all_stock_code):
     print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
-    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], has_mysql))
-    # time.sleep(0.1 + random.random())
+    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, write_file))
     l_num = l_num + page_size
 print("趋势分析满足要求的数量：--->", len(select_list))
 print(select_list)
