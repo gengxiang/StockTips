@@ -225,6 +225,7 @@ def get_current_file():
             }
             stocks = [stock]
             save_mysql(stocks)
+            print("保存数据mysql->", stocks)
             line = file.readline()
 
 
