@@ -203,4 +203,4 @@ def get_current_file():
             line = file.readline()
 
 
-get_current_file()
+# get_current_file()
