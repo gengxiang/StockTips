@@ -179,3 +179,25 @@ def get_current_batch(stock_codes):
             stocks.append(stock)
         # print(currents[ccs])
     return stocks
+
+
+def get_current_file():
+    with open("..\data\\1128.txt", "r") as file:
+        line = file.readline()
+        while line:
+            current_arr = str(line).split('~')
+            stock = {
+                't_date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],
+                'name': current_arr[1],
+                'code': current_arr[0][2:10],
+                'price': float(current_arr[3]),
+                'volume': int(float(current_arr[6])),
+                't_volume': int(float(current_arr[37])),
+                't_change': float(current_arr[38])
+            }
+            stocks = [stock]
+            save_mysql(stocks)
+            line = file.readline()
+
+
+get_current_file()
