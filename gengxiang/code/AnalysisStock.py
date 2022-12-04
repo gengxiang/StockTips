@@ -23,7 +23,7 @@ def get_analysis_info(basic_list, ma, llen):
         total_price = total_price + history['price']
         total_t_volume = total_t_volume + history['amo']
         total_change = total_change + history['hs']
-        if history['amp'] > 9.5:
+        if history['stop_price'] == history['price'] or (history['stop_price'] == 0.0 and history['amp'] > 9.8):
             stop_times = stop_times + 1
 
     p1 = total_price - basic_list[llen - 1]['price'] - basic_list[llen - 2]['price'] - basic_list[llen - 3]['price'] - \
@@ -51,6 +51,7 @@ def get_analysis_info(basic_list, ma, llen):
         'date': basic_list[0]['date'],
         'code': basic_list[0]['code'],
         'name': basic_list[0]['name'],
+        'amp': basic_list[0]['amp'],
         'mc': basic_list[0]['mc'],
         'hs': basic_list[0]['hs'],
         'per': basic_list[0]['per'],
@@ -70,24 +71,20 @@ def get_analysis_info(basic_list, ma, llen):
         'aamo-3': round(t4 / 10000 / ma, 2),
         'aamo-4': round(t5 / 10000 / ma, 2)
     }
-    print("")
-    print("趋势分析使用均线", ma, "--->", analysis_info)
     return analysis_info
 
 
-def analysis(analysis_info):
-    # 非ST 非银行 非地产
-    if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '地产' in analysis_info['name']:
-        print("ST 、银行、地产过滤--->", analysis_info)
-        return
-    # 平均换手率小于1.2 或大于7 ,平均成交额小于5000w
-    elif 1.2 > analysis_info['ahs'] or analysis_info['hs'] > 8 or analysis_info['aamo-0'] < 0.5:
-        print("换手、成交额过滤--->", analysis_info)
-        return
-    # 未涨停
-    elif analysis_info['times'] < 1:
-        print("涨停过滤--->", analysis_info)
-        return
+def analysis(analysis_info, ma):
+    if analysis_info['code'] != 'sh000001' and analysis_info['code'] != 'sz399001':
+        # 非ST 非银行 非地产
+        if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '地产' in analysis_info['name']:
+            return
+        # 平均换手率小于1.2 或大于7 ,平均成交额小于5000w
+        elif 1.5 > analysis_info['ahs'] or analysis_info['hs'] > 8 or analysis_info['aamo-0'] < 0.5:
+            return
+        # 未涨停
+        elif analysis_info['times'] < 1 or analysis_info['amp'] > 9.8:
+            return
 
     aa_price = round((analysis_info['aprice-0'] + analysis_info['aprice-1'] + analysis_info['aprice-2'] +
                       analysis_info['aprice-3'] + analysis_info['aprice-4']) / 5, 2)
@@ -96,10 +93,10 @@ def analysis(analysis_info):
     print(analysis_info['date'], "---->", analysis_info['name'], analysis_info['code'])
     print("今天的收盘价:", analysis_info['price'], "MA:", analysis_info['aprice-0'])
     print("今天的交易额:", analysis_info['amo'], "(亿)", "MA:", analysis_info['aamo-0'], "(亿)")
-    print("成交额高于MA:", analysis_info['amo'] >= analysis_info['aamo-0'],
-          "成交额MA趋势向上:", analysis_info['aamo-0'] >= aat_volume)
-    print("收盘价高于MA:", analysis_info['price'] >= analysis_info['aprice-0'],
-          "收盘价MA趋势向上:", analysis_info['aprice-0'] >= aa_price)
+    print("成交额高于MA", ma, ":", analysis_info['amo'] >= analysis_info['aamo-0'],
+          "成交额MA", ma, "趋势向上:", analysis_info['aamo-0'] >= aat_volume)
+    print("收盘价高于MA", ma, ":", analysis_info['price'] >= analysis_info['aprice-0'],
+          "收盘价MA", ma, "趋势向上:", analysis_info['aprice-0'] >= aa_price)
     print("====================================================")
     if (analysis_info['amo'] >= 1.2 * analysis_info['aamo-0']) & (analysis_info['aamo-0'] >= 1.1 * aat_volume) & (
             analysis_info['price'] >= analysis_info['aprice-0']) & (analysis_info['aprice-0'] >= aa_price):

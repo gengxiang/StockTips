@@ -76,13 +76,14 @@ def save_excel(stock_list, file_name):
         sheet.cell(row=i, column=2).value = history['name']
         sheet.cell(row=i, column=3).value = history['code']
         sheet.cell(row=i, column=4).value = history['price']
-        sheet.cell(row=i, column=5).value = history['amo']
-        sheet.cell(row=i, column=6).value = history['amp']
-        sheet.cell(row=i, column=7).value = history['qrr']
-        sheet.cell(row=i, column=8).value = history['mc']
-        sheet.cell(row=i, column=9).value = history['hs']
-        sheet.cell(row=i, column=10).value = history['per']
-        sheet.cell(row=i, column=11).value = history['pb']
+        sheet.cell(row=i, column=5).value = history['stop_price']
+        sheet.cell(row=i, column=6).value = history['amo']
+        sheet.cell(row=i, column=7).value = history['amp']
+        sheet.cell(row=i, column=8).value = history['qrr']
+        sheet.cell(row=i, column=9).value = history['mc']
+        sheet.cell(row=i, column=10).value = history['hs']
+        sheet.cell(row=i, column=11).value = history['per']
+        sheet.cell(row=i, column=12).value = history['pb']
         i = i + 1
 
     excel.save(file_name)
@@ -104,13 +105,14 @@ def get_excel(file_name):
             'name': (refer_sheet.cell(row=row, column=2)).value,
             'code': (refer_sheet.cell(row=row, column=3)).value,
             'price': float((refer_sheet.cell(row=row, column=4)).value),
-            'amo': int(float((refer_sheet.cell(row=row, column=5)).value)),
-            'amp': float((refer_sheet.cell(row=row, column=6)).value),
-            'qrr': float((refer_sheet.cell(row=row, column=7)).value),
-            'mc': float((refer_sheet.cell(row=row, column=8)).value),
-            'hs': float((refer_sheet.cell(row=row, column=9)).value),
-            'per': float((refer_sheet.cell(row=row, column=10)).value),
-            'pb': float((refer_sheet.cell(row=row, column=11)).value)
+            'stop_price': float((refer_sheet.cell(row=row, column=5)).value),
+            'amo': int(float((refer_sheet.cell(row=row, column=6)).value)),
+            'amp': float((refer_sheet.cell(row=row, column=7)).value),
+            'qrr': float((refer_sheet.cell(row=row, column=8)).value),
+            'mc': float((refer_sheet.cell(row=row, column=9)).value),
+            'hs': float((refer_sheet.cell(row=row, column=10)).value),
+            'per': float((refer_sheet.cell(row=row, column=11)).value),
+            'pb': float((refer_sheet.cell(row=row, column=12)).value)
         }
         stock_list.append(stock)
     return stock_list
@@ -126,16 +128,18 @@ def save_mysql(stock_list):
         cursor.execute(sql)
         results = cursor.fetchall()
         if len(results) == 0:
-            sql = "INSERT INTO stock_data_detail(code, name, date, price, amo, amp, qrr, mc, hs, per, pb)" \
+            sql = "INSERT INTO stock_data_detail(code, name, date, price, stop_price, amo, amp, qrr, mc, hs, per, pb)" \
                   "VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s)" % \
-                  (stock_info['code'], stock_info['name'], stock_info['date'], stock_info['price'], stock_info['amo'],
-                   stock_info['amp'], stock_info['qrr'], stock_info['mc'], stock_info['hs'], stock_info['per'],
-                   stock_info['pb'])
+                  (stock_info['code'], stock_info['name'], stock_info['date'], stock_info['price'],
+                   stock_info['stop_price'],
+                   stock_info['amo'], stock_info['amp'], stock_info['qrr'], stock_info['mc'], stock_info['hs'],
+                   stock_info['per'], stock_info['pb'])
             cursor.execute(sql)
         else:
-            sql = "UPDATE stock_data_detail SET price = %s, amo= %s, amp= %s, qrr = %s, mc = %s, hs = %s, per = %s, pb = %s " \
+            sql = "UPDATE stock_data_detail SET price = %s, stop_price = %s, amo= %s, amp= %s, qrr = %s, mc = %s, hs = %s, per = %s, pb = %s " \
                   "WHERE code = '%s' and date = '%s'" % \
-                  (stock_info['price'], stock_info['amo'], stock_info['amp'], stock_info['qrr'], stock_info['mc'],
+                  (stock_info['price'], stock_info['stop_price'], stock_info['amo'], stock_info['amp'],
+                   stock_info['qrr'], stock_info['mc'],
                    stock_info['hs'], stock_info['per'], stock_info['pb'], stock_info['code'], stock_info['date'])
             cursor.execute(sql)
     mysql.commit()
@@ -156,13 +160,14 @@ def get_mysql(stock_code):
             'name': row[2],
             'code': row[1],
             'price': row[4],
-            'amo': row[5],  # 成交额（万元）
+            'stop_price': row[5],  # 涨停价
+            'amo': row[7],  # 成交额（万元）
             'amp': row[6],  # 涨跌幅%
-            'qrr': row[7],  # 量比
+            'qrr': row[9],  # 量比
             'mc': row[8],  # 总市值
-            'hs': row[9],  # 换手率
-            'per': row[10],  # 市盈率
-            'pb': row[11],  # 市净率
+            'hs': row[10],  # 换手率
+            'per': row[11],  # 市盈率
+            'pb': row[12],  # 市净率
         }
         stock_list.append(stock)
     return stock_list
@@ -193,6 +198,7 @@ def get_current_batch(stock_codes, write_file):
                     'name': current_arr[1],  # 名称
                     'code': stock_codes[ccs],  # 编码
                     'price': float(current_arr[3]),  # 收盘价格
+                    'stop_price': float(current_arr[47]),  # 涨停价格
                     'amo': int(float(current_arr[37])),  # 成交额（万元）
                     'amp': float(current_arr[32]),  # 涨跌幅%
                     'qrr': float(current_arr[49]),  # 量比

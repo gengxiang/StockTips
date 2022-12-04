@@ -507,22 +507,25 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
             GetSaveStock.save_excel(history_list, excel_file_name)
         history_list = GetSaveStock.get_excel(excel_file_name)
         if len(history_list) >= 20:
-            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
+            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)), 16)
             if nn is not None:
                 selects.append(nn)
         else:
             nn = AnalysisStock.analysis(
-                AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
+                AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)),
+                len(history_list) - 4)
             if nn is not None:
                 selects.append(nn)
     return selects
 
 
+write_file = False
+run_with_mysql = True
+full_dump_list(['sh000001', 'sz399001'], run_with_mysql, write_file)
+
 select_list = []
 l_num = 0
 page_size = 30
-write_file = False
-run_with_mysql = True
 if write_file:
     with open("..\data_new\stocks.txt", "w") as file:
         file.write("")
