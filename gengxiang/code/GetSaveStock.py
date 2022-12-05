@@ -129,7 +129,7 @@ def save_mysql(stock_list):
         results = cursor.fetchall()
         if len(results) == 0:
             sql = "INSERT INTO stock_data_detail(code, name, date, price, stop_price, amo, amp, qrr, mc, hs, per, pb)" \
-                  "VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s)" % \
+                  "VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s)" % \
                   (stock_info['code'], stock_info['name'], stock_info['date'], stock_info['price'],
                    stock_info['stop_price'],
                    stock_info['amo'], stock_info['amp'], stock_info['qrr'], stock_info['mc'], stock_info['hs'],
