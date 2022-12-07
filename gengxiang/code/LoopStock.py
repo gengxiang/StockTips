@@ -507,7 +507,7 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
             GetSaveStock.save_excel(history_list, excel_file_name)
         history_list = GetSaveStock.get_excel(excel_file_name)
         if len(history_list) >= 20:
-            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)), 16)
+            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20), 16))
             if nn is not None:
                 selects.append(nn)
         else:
