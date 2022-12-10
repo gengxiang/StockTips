@@ -21,7 +21,7 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         return None
     stop_times = 0
     for history in basic_list:
-        if history['stop_price'] == history['price'] or (history['stop_price'] == 0.0 and history['amp'] > 9.8):
+        if history['stop_price'] == history['price'] or (history['stop_price'] <= 0.0 and history['amp'] > 9.8):
             stop_times = stop_times + 1
 
     tuple_min0 = get_total(basic_list[0: ma_min + 0])

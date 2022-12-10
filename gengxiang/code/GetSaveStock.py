@@ -63,13 +63,14 @@ def save_excel(stock_list, file_name):
     sheet.cell(row=1, column=2).value = '名称'
     sheet.cell(row=1, column=3).value = '代码'
     sheet.cell(row=1, column=4).value = '价格'
-    sheet.cell(row=1, column=5).value = '成交额(万元)'
-    sheet.cell(row=1, column=6).value = '涨跌幅%'
-    sheet.cell(row=1, column=7).value = '量比'
-    sheet.cell(row=1, column=8).value = '总市值(亿元)'
-    sheet.cell(row=1, column=9).value = '换手率'
-    sheet.cell(row=1, column=10).value = '市盈率'
-    sheet.cell(row=1, column=11).value = '市净率'
+    sheet.cell(row=1, column=5).value = '涨停价格'
+    sheet.cell(row=1, column=6).value = '成交额(万元)'
+    sheet.cell(row=1, column=7).value = '涨跌幅%'
+    sheet.cell(row=1, column=8).value = '量比'
+    sheet.cell(row=1, column=9).value = '总市值(亿元)'
+    sheet.cell(row=1, column=10).value = '换手率'
+    sheet.cell(row=1, column=11).value = '市盈率'
+    sheet.cell(row=1, column=12).value = '市净率'
     i = 2
     for history in stock_list:
         sheet.cell(row=i, column=1).value = history['date']
@@ -136,9 +137,9 @@ def save_mysql(stock_list):
                    stock_info['per'], stock_info['pb'])
             cursor.execute(sql)
         else:
-            sql = "UPDATE stock_data_detail SET price = %s, stop_price = %s, amo= %s, amp= %s, qrr = %s, mc = %s, hs = %s, per = %s, pb = %s " \
+            sql = "UPDATE stock_data_detail SET price = %s, amo= %s, amp= %s, qrr = %s, mc = %s, hs = %s, per = %s, pb = %s " \
                   "WHERE code = '%s' and date = '%s'" % \
-                  (stock_info['price'], stock_info['stop_price'], stock_info['amo'], stock_info['amp'],
+                  (stock_info['price'], stock_info['amo'], stock_info['amp'],
                    stock_info['qrr'], stock_info['mc'],
                    stock_info['hs'], stock_info['per'], stock_info['pb'], stock_info['code'], stock_info['date'])
             cursor.execute(sql)
