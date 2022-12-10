@@ -1,3 +1,6 @@
+import json
+import time
+
 import AnalysisStock
 import GetSaveStock
 
@@ -488,6 +491,9 @@ all_stock_code = [
     'sh600012', 'sh605388', 'sh605389', 'sh605398', 'sh605399', 'sh605488', 'sh605499', 'sh605500', 'sh605507',
     'sh605555', 'sh605566', 'sh605567', 'sh605577', 'sh605580', 'sh605588', 'sh605589', 'sh605598', 'sh605599']
 
+# 今天日期
+todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+
 
 def full_dump_list(stock_code_list, run_mysql, w_file):
     selects = []
@@ -533,5 +539,7 @@ while l_num < len(all_stock_code):
     select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, write_file))
     l_num = l_num + page_size
 print("趋势分析满足要求的数量：--->", len(select_list))
-for select in select_list:
-    print(select)
+
+with open("..\data_new\\" + todayStr + "_stocks.txt", "a") as file:
+    for select in select_list:
+        file.write(json.dumps(select, ensure_ascii=False))
