@@ -505,13 +505,13 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
         today_list = GetSaveStock.get_current_batch(stock_code_list, False)
     for num in range(0, len(stock_code_list)):
         stock_code = stock_code_list[num]
-        excel_file_name = '..\data_new\\' + stock_code + '.xlsx'
+        # excel_file_name = '..\data_new\\' + stock_code + '.xlsx'
         if run_mysql:
             history_list = [today_list[num]]
             GetSaveStock.save_mysql(history_list)
             history_list = GetSaveStock.get_mysql(stock_code)
-            GetSaveStock.save_excel(history_list, excel_file_name)
-        history_list = GetSaveStock.get_excel(excel_file_name)
+            # GetSaveStock.save_excel(history_list, excel_file_name)
+        # history_list = GetSaveStock.get_excel(excel_file_name)
         if len(history_list) >= 20:
             nn = AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 7, 16), 7, 16)
             if nn is not None:
@@ -540,6 +540,7 @@ while l_num < len(all_stock_code):
     l_num = l_num + page_size
 print("趋势分析满足要求的数量：--->", len(select_list))
 
-with open("..\data_new\\" + todayStr + "_stocks.txt", "a") as file:
+with open("..\\result\\" + todayStr + ".txt", "a") as file:
     for select in select_list:
         file.write(json.dumps(select, ensure_ascii=False))
+        file.write("\n")
