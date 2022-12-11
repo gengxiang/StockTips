@@ -532,7 +532,7 @@ select_list = []
 l_num = 0
 page_size = 30
 if write_file:
-    with open("..\data_new\stocks.txt", "w") as file:
+    with open("..\data\\" + todayStr + ".txt", "w") as file:
         file.write("")
 while l_num < len(all_stock_code):
     print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])

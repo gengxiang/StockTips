@@ -185,7 +185,7 @@ def get_current_batch(stock_codes, write_file):
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
 
     if write_file:
-        with open("..\data_new\stocks.txt", "a") as file:
+        with open("..\data\\" + todayStr + ".txt", "a") as file:
             file.write(current_str)
             print("写入文件->", current_str)
     else:
