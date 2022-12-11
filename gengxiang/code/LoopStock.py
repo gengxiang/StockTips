@@ -524,7 +524,7 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
     return selects
 
 
-write_file = False
+write_file = True
 run_with_mysql = True
 full_dump_list(['sh000001', 'sz399001'], run_with_mysql, write_file)
 
