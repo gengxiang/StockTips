@@ -4,84 +4,95 @@ import time
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
-def get_analysis_info(basic_list, ma, llen):
-    """
-    跟进近20日交易数据
-    获取16日平均价格&平均成交额
-    获取前4天16日平均价格&平均成交额
-    :rtype: object
-    """
+def get_total(basic_list):
     total_price = 0
-    total_t_volume = 0
-    if ma < llen - 4:
+    total_amo = 0
+    total_hs = 0
+    for per in basic_list:
+        total_price = total_price + per['price']
+        total_amo = total_amo + per['amo']
+        total_hs = total_hs + per['hs']
+    return total_price, total_amo, total_hs
+
+
+def get_analysis_info(basic_list, ma_min, ma_max):
+    llen = len(basic_list)
+    if llen < 5:
         return None
-
+    stop_times = 0
     for history in basic_list:
-        total_price = total_price + history['price']
-        total_t_volume = total_t_volume + history['t_volume']
+        if history['stop_price'] == history['price'] or (history['stop_price'] <= 0.0 and history['amp'] > 9.8):
+            stop_times = stop_times + 1
 
-    p1 = total_price - basic_list[llen-1]['price'] - basic_list[llen-2]['price'] - basic_list[llen-3]['price'] - basic_list[llen-4][
-        'price']
-    p2 = total_price - basic_list[llen-1]['price'] - basic_list[llen-2]['price'] - basic_list[llen-3]['price'] - basic_list[llen-ma-4][
-        'price']
-    p3 = total_price - basic_list[llen-1]['price'] - basic_list[llen-2]['price'] - basic_list[llen-ma-4]['price'] - basic_list[llen-ma-3][
-        'price']
-    p4 = total_price - basic_list[llen-1]['price'] - basic_list[llen-ma-4]['price'] - basic_list[llen-ma-3]['price'] - basic_list[llen-ma-2][
-        'price']
-    p5 = total_price - basic_list[llen-ma-4]['price'] - basic_list[llen-ma-3]['price'] - basic_list[llen-ma-2]['price'] - basic_list[llen-ma-1]['price']
-    # print(round(p5 / 16), "->", round(p4 / 16), "->", round(p3 / 16), "->", round(p2 / 16), "->", round(p1 / 16))
-
-    t1 = total_t_volume - basic_list[llen-1]['t_volume'] - basic_list[llen-2]['t_volume'] - basic_list[llen-3]['t_volume'] - basic_list[llen-4]['t_volume']
-    t2 = total_t_volume - basic_list[llen-1]['t_volume'] - basic_list[llen-2]['t_volume'] - basic_list[llen-3]['t_volume'] - basic_list[llen-ma-4]['t_volume']
-    t3 = total_t_volume - basic_list[llen-1]['t_volume'] - basic_list[llen-2]['t_volume'] - basic_list[llen-ma-4]['t_volume'] - basic_list[llen-ma-3]['t_volume']
-    t4 = total_t_volume - basic_list[llen-1]['t_volume'] - basic_list[llen-ma-4]['t_volume'] - basic_list[llen-ma-3]['t_volume'] - basic_list[llen-ma-2]['t_volume']
-    t5 = total_t_volume - basic_list[llen-ma-4]['t_volume'] - basic_list[llen-ma-3]['t_volume'] - basic_list[llen-ma-2]['t_volume'] - basic_list[llen-ma-1]['t_volume']
-    # print(round(t5 / 16), "->", round(t4 / 16), "->", round(t3 / 16), "->", round(t2 / 16), "->", round(t1 / 16))
+    tuple_min0 = get_total(basic_list[0: ma_min + 0])
+    tuple_max0 = get_total(basic_list[0: ma_max + 0])
+    tuple_min1 = get_total(basic_list[1: ma_min + 1])
+    tuple_max1 = get_total(basic_list[1: ma_max + 1])
+    tuple_min2 = get_total(basic_list[2: ma_min + 2])
+    tuple_max2 = get_total(basic_list[2: ma_max + 2])
+    tuple_min3 = get_total(basic_list[3: ma_min + 3])
+    tuple_max3 = get_total(basic_list[3: ma_max + 3])
+    tuple_min4 = get_total(basic_list[4: ma_min + 4])
+    tuple_max4 = get_total(basic_list[4: ma_max + 4])
 
     analysis_info = {
-        'date': basic_list[0]['t_date'],
+        'date': basic_list[0]['date'],
         'code': basic_list[0]['code'],
         'name': basic_list[0]['name'],
+        'times': stop_times,
+        'hs': basic_list[0]['hs'],
+        'ahs': round(tuple_max0[2] / ma_max, 2),
         'price': basic_list[0]['price'],
-        'change': basic_list[0]['t_change'],
-        'a_price': round(p1 / ma, 2),
-        'a_price_1': round(p2 / ma, 2),
-        'a_price_2': round(p3 / ma, 2),
-        'a_price_3': round(p4 / ma, 2),
-        'a_price_4': round(p5 / ma, 2),
-        't_volume': round(basic_list[0]['t_volume'] / 10000, 2),
-        'at_volume': round(t1 / 10000 / ma, 2),
-        'at_volume_1': round(t2 / 10000 / ma, 2),
-        'at_volume_2': round(t3 / 10000 / ma, 2),
-        'at_volume_3': round(t4 / 10000 / ma, 2),
-        'at_volume_4': round(t5 / 10000 / ma, 2)
+        'aprice-0': [round(tuple_min0[0] / ma_min, 2), round(tuple_max0[0] / ma_max, 2)],
+        'aprice-1': [round(tuple_min1[0] / ma_min, 2), round(tuple_max1[0] / ma_max, 2)],
+        'aprice-2': [round(tuple_min2[0] / ma_min, 2), round(tuple_max2[0] / ma_max, 2)],
+        'aprice-3': [round(tuple_min3[0] / ma_min, 2), round(tuple_max3[0] / ma_max, 2)],
+        'aprice-4': [round(tuple_min4[0] / ma_min, 2), round(tuple_max4[0] / ma_max, 2)],
+        'amo': round(basic_list[0]['amo'] / 10000, 2),
+        'aamo-0': [round(tuple_min0[1] / ma_min / 10000, 2), round(tuple_max0[1] / ma_max / 10000, 2)],
+        'aamo-1': [round(tuple_min1[1] / ma_min / 10000, 2), round(tuple_max1[1] / ma_max / 10000, 2)],
+        'aamo-2': [round(tuple_min2[1] / ma_min / 10000, 2), round(tuple_max2[1] / ma_max / 10000, 2)],
+        'aamo-3': [round(tuple_min3[1] / ma_min / 10000, 2), round(tuple_max3[1] / ma_max / 10000, 2)],
+        'aamo-4': [round(tuple_min4[1] / ma_min / 10000, 2), round(tuple_max4[1] / ma_max / 10000, 2)],
+        'amp': basic_list[0]['amp'],
+        'mc': basic_list[0]['mc'],
+        'per': basic_list[0]['per'],
+        'pb': basic_list[0]['pb']
     }
-    print("")
-    print("趋势分析使用均线", ma, "--->", analysis_info)
     return analysis_info
 
 
-def analysis(analysis_info):
-    if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '地产' in analysis_info['name']:
-        print("ST 、银行、地产过滤--->", analysis_info)
-        return
-    elif analysis_info['change'] < 2 and analysis_info['at_volume'] < 0.5:
-        print("换手、成交额过滤--->", analysis_info)
-        return
+def analysis(analysis_info, ma_min, ma_max):
+    if analysis_info['code'] != 'sh000001' and analysis_info['code'] != 'sz399001':
+        # 非ST 非银行 非地产
+        if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '地产' in analysis_info['name']:
+            return
+        # 未涨停
+        elif analysis_info['times'] < 1 or analysis_info['amp'] > 9.8:
+            return
+        # 平均换手率小于1.5 或大于8 ,平均成交额小于5000w, ma_min < ma_max
+        elif analysis_info['ahs'] < 1.5 or analysis_info['hs'] > 8 or analysis_info['aamo-0'][1] < 0.5 or \
+                analysis_info['aprice-0'][0] < analysis_info['aprice-0'][1]:
+            return
 
-    aa_price = round((analysis_info['a_price'] + analysis_info['a_price_1'] + analysis_info['a_price_2'] +
-                      analysis_info['a_price_3'] + analysis_info['a_price_4']) / 5, 2)
-    aat_volume = round((analysis_info['at_volume'] + analysis_info['at_volume_1'] + analysis_info['at_volume_2'] +
-                        analysis_info['at_volume_3'] + analysis_info['at_volume_4']) / 5, 2)
+    aa_price = round((analysis_info['aprice-0'][1] + analysis_info['aprice-1'][1] + analysis_info['aprice-2'][1] +
+                      analysis_info['aprice-3'][1] + analysis_info['aprice-4'][1]) / 5, 2)
+    aat_volume = round((analysis_info['aamo-0'][1] + analysis_info['aamo-1'][1] + analysis_info['aamo-2'][1] +
+                        analysis_info['aamo-3'][1] + analysis_info['aamo-4'][1]) / 5, 2)
     print(analysis_info['date'], "---->", analysis_info['name'], analysis_info['code'])
-    print("今天的收盘价:", analysis_info['price'], "MA:", analysis_info['a_price'])
-    print("今天的交易额:", analysis_info['t_volume'], "(亿)", "MA:", analysis_info['at_volume'], "(亿)")
-    print("成交额高于MA:", analysis_info['t_volume'] > analysis_info['at_volume'],
-          "成交额MA趋势向上:", analysis_info['at_volume'] > aat_volume)
-    print("收盘价高于MA:", analysis_info['price'] > analysis_info['a_price'],
-          "收盘价MA趋势向上:", analysis_info['a_price'] > aa_price)
-    print("====================================================")
-    if (analysis_info['t_volume'] > 1.4 * analysis_info['at_volume']) & (
-            analysis_info['at_volume'] > 1.2 * aat_volume) & (analysis_info['price'] > analysis_info['a_price']) & (
-            analysis_info['a_price'] > aa_price):
-        return analysis_info["name"]
+    print("今天的收盘价:%9s" % analysis_info['price'], "MA", ma_min, ":%9s" % analysis_info['aprice-0'][0], "MA",
+          ma_max, ":%9s" % analysis_info['aprice-0'][1])
+    print("今天的交易额:%9s" % analysis_info['amo'], "MA", ma_min, ":%9s" % analysis_info['aamo-0'][0], "MA", ma_max,
+          ":%9s" % analysis_info['aamo-0'][1])
+    print("成交额高于MA", ma_min, ":", analysis_info['amo'] >= analysis_info['aamo-0'][0], "成交额高于MA", ma_max, ":",
+          analysis_info['amo'] >= analysis_info['aamo-0'][1],
+          "成交额MA", ma_max, "趋势向上:", analysis_info['aamo-0'][1] >= aat_volume)
+    print("收盘价高于MA", ma_min, ":", analysis_info['price'] >= analysis_info['aprice-0'][0], "收盘价高于MA", ma_max,
+          ":", analysis_info['price'] >= analysis_info['aprice-0'][1],
+          "收盘价MA", ma_max, "趋势向上:", analysis_info['aprice-0'][1] >= aa_price)
+    print("========================================================================================")
+    if (analysis_info['aamo-0'][1] >= aat_volume) & (analysis_info['aprice-0'][1] >= aa_price) \
+            & (analysis_info['amo'] >= analysis_info['aamo-0'][1]) & (
+            analysis_info['amo'] <= analysis_info['aamo-0'][0]) \
+            & (analysis_info['price'] >= analysis_info['aprice-0'][0]) & (analysis_info['aprice-0'][1] >= aa_price):
+        return analysis_info

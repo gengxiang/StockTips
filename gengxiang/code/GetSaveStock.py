@@ -59,22 +59,32 @@ def save_excel(stock_list, file_name):
 
     excel = openpyxl.load_workbook(file_name)
     sheet = excel[excel.sheetnames[0]]
-    sheet.cell(row=1, column=1).value = 'date'
-    sheet.cell(row=1, column=2).value = 'name'
-    sheet.cell(row=1, column=3).value = 'code'
-    sheet.cell(row=1, column=4).value = 'price'
-    sheet.cell(row=1, column=5).value = 'volume'
-    sheet.cell(row=1, column=6).value = 't_volume'
-    sheet.cell(row=1, column=7).value = 't_change'
+    sheet.cell(row=1, column=1).value = '日期'
+    sheet.cell(row=1, column=2).value = '名称'
+    sheet.cell(row=1, column=3).value = '代码'
+    sheet.cell(row=1, column=4).value = '价格'
+    sheet.cell(row=1, column=5).value = '涨停价格'
+    sheet.cell(row=1, column=6).value = '成交额(万元)'
+    sheet.cell(row=1, column=7).value = '涨跌幅%'
+    sheet.cell(row=1, column=8).value = '量比'
+    sheet.cell(row=1, column=9).value = '总市值(亿元)'
+    sheet.cell(row=1, column=10).value = '换手率'
+    sheet.cell(row=1, column=11).value = '市盈率'
+    sheet.cell(row=1, column=12).value = '市净率'
     i = 2
     for history in stock_list:
-        sheet.cell(row=i, column=1).value = history['t_date']
+        sheet.cell(row=i, column=1).value = history['date']
         sheet.cell(row=i, column=2).value = history['name']
         sheet.cell(row=i, column=3).value = history['code']
         sheet.cell(row=i, column=4).value = history['price']
-        sheet.cell(row=i, column=5).value = history['volume']
-        sheet.cell(row=i, column=6).value = history['t_volume']
-        sheet.cell(row=i, column=7).value = history['t_change']
+        sheet.cell(row=i, column=5).value = history['stop_price']
+        sheet.cell(row=i, column=6).value = history['amo']
+        sheet.cell(row=i, column=7).value = history['amp']
+        sheet.cell(row=i, column=8).value = history['qrr']
+        sheet.cell(row=i, column=9).value = history['mc']
+        sheet.cell(row=i, column=10).value = history['hs']
+        sheet.cell(row=i, column=11).value = history['per']
+        sheet.cell(row=i, column=12).value = history['pb']
         i = i + 1
 
     excel.save(file_name)
@@ -92,13 +102,18 @@ def get_excel(file_name):
     for row in range(2, refer_sheet.max_row + 1):
         # 读取cell单元格中的数据
         stock = {
-            't_date': str((refer_sheet.cell(row=row, column=1)).value),
+            'date': str((refer_sheet.cell(row=row, column=1)).value),
             'name': (refer_sheet.cell(row=row, column=2)).value,
             'code': (refer_sheet.cell(row=row, column=3)).value,
             'price': float((refer_sheet.cell(row=row, column=4)).value),
-            'volume': int(float((refer_sheet.cell(row=row, column=5)).value)),
-            't_volume': int(float((refer_sheet.cell(row=row, column=6)).value)),
-            't_change': float((refer_sheet.cell(row=row, column=7)).value)
+            'stop_price': float((refer_sheet.cell(row=row, column=5)).value),
+            'amo': int(float((refer_sheet.cell(row=row, column=6)).value)),
+            'amp': float((refer_sheet.cell(row=row, column=7)).value),
+            'qrr': float((refer_sheet.cell(row=row, column=8)).value),
+            'mc': float((refer_sheet.cell(row=row, column=9)).value),
+            'hs': float((refer_sheet.cell(row=row, column=10)).value),
+            'per': float((refer_sheet.cell(row=row, column=11)).value),
+            'pb': float((refer_sheet.cell(row=row, column=12)).value)
         }
         stock_list.append(stock)
     return stock_list
@@ -109,21 +124,24 @@ def save_mysql(stock_list):
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
     for stock_info in stock_list:
-        sql = "SELECT * FROM gx_stock_data WHERE code = '%s' and t_date = '%s' limit 1" % \
-              (stock_info['code'], stock_info['t_date'])
+        sql = "SELECT * FROM stock_data_detail WHERE code = '%s' and date = '%s' limit 1" % \
+              (stock_info['code'], stock_info['date'])
         cursor.execute(sql)
         results = cursor.fetchall()
         if len(results) == 0:
-            sql = "INSERT INTO gx_stock_data(code, name, price, volume, t_volume, t_change, t_date)" \
-                  "VALUES ('%s', '%s', %s, %s, %s, %s, '%s')" % \
-                  (stock_info['code'], stock_info['name'], stock_info['price'], stock_info['volume'],
-                   stock_info['t_volume'], stock_info['t_change'], stock_info['t_date'])
+            sql = "INSERT INTO stock_data_detail(code, name, date, price, stop_price, amo, amp, qrr, mc, hs, per, pb)" \
+                  "VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s)" % \
+                  (stock_info['code'], stock_info['name'], stock_info['date'], stock_info['price'],
+                   stock_info['stop_price'],
+                   stock_info['amo'], stock_info['amp'], stock_info['qrr'], stock_info['mc'], stock_info['hs'],
+                   stock_info['per'], stock_info['pb'])
             cursor.execute(sql)
         else:
-            sql = "UPDATE gx_stock_data SET price = %s, volume= %s, t_volume= %s, t_change = %s  " \
-                  "WHERE code = '%s' and t_date = '%s'" % \
-                  (stock_info['price'], stock_info['volume'],
-                   stock_info['t_volume'], stock_info['t_change'], stock_info['code'], stock_info['t_date'])
+            sql = "UPDATE stock_data_detail SET price = %s, amo= %s, amp= %s, qrr = %s, mc = %s, hs = %s, per = %s, pb = %s " \
+                  "WHERE code = '%s' and date = '%s'" % \
+                  (stock_info['price'], stock_info['amo'], stock_info['amp'],
+                   stock_info['qrr'], stock_info['mc'],
+                   stock_info['hs'], stock_info['per'], stock_info['pb'], stock_info['code'], stock_info['date'])
             cursor.execute(sql)
     mysql.commit()
     cursor.close()
@@ -134,18 +152,23 @@ def get_mysql(stock_code):
     mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
-    sql = "SELECT * FROM gx_stock_data WHERE code = '%s' order by id desc limit 20" % stock_code
+    sql = "SELECT * FROM stock_data_detail WHERE code = '%s' order by id desc limit 20" % stock_code
     cursor.execute(sql)
     results = cursor.fetchall()
     for row in results:
         stock = {
-            't_date': row[7],
+            'date': row[3],
             'name': row[2],
             'code': row[1],
-            'price': row[3],
-            'volume': row[4],
-            't_volume': row[5],
-            't_change': row[6]
+            'price': row[4],
+            'stop_price': row[5],  # 涨停价
+            'amo': row[7],  # 成交额（万元）
+            'amp': row[6],  # 涨跌幅%
+            'qrr': row[9],  # 量比
+            'mc': row[8],  # 总市值
+            'hs': row[10],  # 换手率
+            'per': row[11],  # 市盈率
+            'pb': row[12],  # 市净率
         }
         stock_list.append(stock)
     return stock_list
@@ -158,11 +181,11 @@ def get_current_batch(stock_codes, write_file):
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
     except:
         print("请求异常等待………………")
-        time.sleep(0.8)
+        time.sleep(5)
         current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
 
     if write_file:
-        with open("..\data\stocks.txt", "a") as file:
+        with open("..\data_new\stocks.txt", "a") as file:
             file.write(current_str)
             print("写入文件->", current_str)
     else:
@@ -172,34 +195,44 @@ def get_current_batch(stock_codes, write_file):
             if '\n' != currents[ccs]:
                 current_arr = str(currents[ccs]).split('~')
                 stock = {
-                    't_date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],
-                    'name': current_arr[1],
-                    'code': stock_codes[ccs],
-                    'price': float(current_arr[3]),
-                    'volume': int(float(current_arr[6])),
-                    't_volume': int(float(current_arr[37])),
-                    't_change': float(current_arr[38])
+                    'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
+                    'name': current_arr[1],  # 名称
+                    'code': stock_codes[ccs],  # 编码
+                    'price': float(current_arr[3]),  # 收盘价格
+                    'stop_price': float(current_arr[47]),  # 涨停价格
+                    'amo': int(float(current_arr[37])),  # 成交额（万元）
+                    'amp': float(current_arr[32]),  # 涨跌幅%
+                    'qrr': float(current_arr[49]),  # 量比
+                    'hs': float(current_arr[38]),  # 换手率
+                    'mc': float(current_arr[45]),  # 总市值
+                    'per': float(current_arr[39]),  # 市盈率
+                    'pb': float(current_arr[46]),  # 市净率
                 }
                 stocks.append(stock)
     return stocks
 
 
 def get_current_file():
-    with open("..\data\stocks.txt", "r") as file:
+    with open("..\data_new\stocks.txt", "r") as file:
         line = file.readline()
         while line:
             current_arr = str(line).split('~')
             stock = {
-                't_date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],
-                'name': current_arr[1],
-                'code': current_arr[0][2:10],
-                'price': float(current_arr[3]),
-                'volume': int(float(current_arr[6])),
-                't_volume': int(float(current_arr[37])),
-                't_change': float(current_arr[38])
+                'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
+                'name': current_arr[1],  # 名称
+                'code': current_arr[0][2:10],  # 编码
+                'price': float(current_arr[3]),  # 收盘价格
+                'amo': int(float(current_arr[37])),  # 成交额（万元）
+                'amp': float(current_arr[32]),  # 涨跌幅%
+                'qrr': float(current_arr[49]),  # 量比
+                'hs': float(current_arr[38]),  # 换手率
+                'mc': float(current_arr[45]),  # 总市值
+                'per': float(current_arr[39]),  # 市盈率
+                'pb': float(current_arr[46]),  # 市净率
             }
             stocks = [stock]
             save_mysql(stocks)
+            print("保存数据mysql->", stocks)
             line = file.readline()
 
 

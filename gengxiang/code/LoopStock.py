@@ -1,3 +1,6 @@
+import json
+import time
+
 import AnalysisStock
 import GetSaveStock
 
@@ -488,27 +491,13 @@ all_stock_code = [
     'sh600012', 'sh605388', 'sh605389', 'sh605398', 'sh605399', 'sh605488', 'sh605499', 'sh605500', 'sh605507',
     'sh605555', 'sh605566', 'sh605567', 'sh605577', 'sh605580', 'sh605588', 'sh605589', 'sh605598', 'sh605599']
 
-
-def full_dump(stock_code):
-    # 获取基础信息
-    today = GetSaveStock.get_current(stock_code)
-    history_list = [today]
-    # 获取历史信息
-    # history_list = get_history('sh000001', '2022-09-01', '2022-10-10')
-
-    GetSaveStock.save_mysql(history_list)
-    history_list = GetSaveStock.get_mysql(stock_code)
-
-    excel_file_name = '..\data\\' + stock_code + '.xlsx'
-    GetSaveStock.save_excel(history_list, excel_file_name)
-    history_list = GetSaveStock.get_excel(excel_file_name)
-    if len(history_list) >= 20:
-        return AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20))
+# 今天日期
+todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
-def full_dump_list(stock_code_list, run_mysql, file):
+def full_dump_list(stock_code_list, run_mysql, w_file):
     selects = []
-    if file:
+    if w_file:
         GetSaveStock.get_current_batch(stock_code_list, True)
         return selects
     # 获取基础信息
@@ -516,45 +505,42 @@ def full_dump_list(stock_code_list, run_mysql, file):
         today_list = GetSaveStock.get_current_batch(stock_code_list, False)
     for num in range(0, len(stock_code_list)):
         stock_code = stock_code_list[num]
-        excel_file_name = '..\data\\' + stock_code + '.xlsx'
+        # excel_file_name = '..\data_new\\' + stock_code + '.xlsx'
         if run_mysql:
             history_list = [today_list[num]]
             GetSaveStock.save_mysql(history_list)
             history_list = GetSaveStock.get_mysql(stock_code)
-            GetSaveStock.save_excel(history_list, excel_file_name)
-        history_list = GetSaveStock.get_excel(excel_file_name)
+            # GetSaveStock.save_excel(history_list, excel_file_name)
+        # history_list = GetSaveStock.get_excel(excel_file_name)
         if len(history_list) >= 20:
-            nn = (AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 16, 20)))
+            nn = AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 7, 16), 7, 16)
             if nn is not None:
                 selects.append(nn)
         else:
-            nn = AnalysisStock.analysis(
-                AnalysisStock.get_analysis_info(history_list, len(history_list) - 4, len(history_list)))
+            nn = AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 1, len(history_list) - 4), 1,
+                                        len(history_list) - 4)
             if nn is not None:
                 selects.append(nn)
     return selects
 
 
+write_file = False
+run_with_mysql = True
+full_dump_list(['sh000001', 'sz399001'], run_with_mysql, write_file)
+
 select_list = []
 l_num = 0
 page_size = 30
-write_file = False
-run_with_mysql = True
 if write_file:
-    with open("..\data\stocks.txt", "w") as file:
+    with open("..\data_new\stocks.txt", "w") as file:
         file.write("")
 while l_num < len(all_stock_code):
     print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
     select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, write_file))
     l_num = l_num + page_size
 print("趋势分析满足要求的数量：--->", len(select_list))
-print(select_list)
 
-# select_list = []
-# for num in range(0, 2):
-#     print(num)
-#     select = full_dump(all_stock_code[num])
-#     if select is not None:
-#         select_list.append(all_stock_code[num])
-#     time.sleep(0.2)
-# print(select_list)
+with open("..\\result\\" + todayStr + ".txt", "a") as file:
+    for select in select_list:
+        file.write(json.dumps(select, ensure_ascii=False))
+        file.write("\n")
