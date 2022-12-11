@@ -213,7 +213,7 @@ def get_current_batch(stock_codes, write_file):
 
 
 def get_current_file():
-    with open("..\data_new\stocks.txt", "r") as file:
+    with open("..\data\\" + todayStr + ".txt", "r") as file:
         line = file.readline()
         while line:
             current_arr = str(line).split('~')
@@ -222,6 +222,7 @@ def get_current_file():
                 'name': current_arr[1],  # 名称
                 'code': current_arr[0][2:10],  # 编码
                 'price': float(current_arr[3]),  # 收盘价格
+                'stop_price': float(current_arr[47]),  # 涨停价格
                 'amo': int(float(current_arr[37])),  # 成交额（万元）
                 'amp': float(current_arr[32]),  # 涨跌幅%
                 'qrr': float(current_arr[49]),  # 量比
