@@ -526,7 +526,6 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
 
 write_file = False
 run_with_mysql = True
-full_dump_list(['sh000001', 'sz399001'], run_with_mysql, write_file)
 
 select_list = []
 l_num = 0
@@ -544,3 +543,5 @@ with open("..\\result\\" + todayStr + ".txt", "a") as file:
     for select in select_list:
         file.write(json.dumps(select, ensure_ascii=False))
         file.write("\n")
+
+full_dump_list(['sh000001', 'sz399001'], run_with_mysql, write_file)
