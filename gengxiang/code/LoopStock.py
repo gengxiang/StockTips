@@ -541,6 +541,7 @@ print("趋势分析满足要求的数量：--->", len(select_list))
 
 with open("..\\result\\" + todayStr + ".txt", "a") as file:
     for select in select_list:
+        print(select)
         file.write(json.dumps(select, ensure_ascii=False))
         file.write("\n")
 
