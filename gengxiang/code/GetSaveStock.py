@@ -194,6 +194,8 @@ def get_current_batch(stock_codes, write_file):
         for ccs in range(0, len(currents)):
             if '\n' != currents[ccs]:
                 current_arr = str(currents[ccs]).split('~')
+                if current_arr[39] == '':
+                    current_arr[39] = 0
                 stock = {
                     'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
                     'name': current_arr[1],  # 名称
