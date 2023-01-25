@@ -546,8 +546,8 @@ while l_num < len(all_stock_code):
     l_num = l_num + page_size
 
 stop_list.sort(key=lambda k: (k.get('times', 0)), reverse=True)
-if len(stop_list) > 5:
-    stop_list = stop_list[:5]
+if len(stop_list) > 10:
+    stop_list = stop_list[:10]
 print("趋势分析满足要求的数量：--->", len(stop_list), "+++++", len(select_list))
 with open("..\\result\\" + todayStr + ".txt", "a") as file:
     file.write("涨停数排行: \n")
