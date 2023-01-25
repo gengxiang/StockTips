@@ -62,6 +62,11 @@ def get_analysis_info(basic_list, ma_min, ma_max):
     return analysis_info
 
 
+def analysis_stop_time(analysis_info):
+    if analysis_info['times'] > 1:
+        return analysis_info
+
+
 def analysis(analysis_info, ma_min, ma_max):
     if analysis_info['code'] != 'sh000001' and analysis_info['code'] != 'sz399001':
         # 非ST 非银行 非地产

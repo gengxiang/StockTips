@@ -1,5 +1,6 @@
 import json
 import time
+from operator import attrgetter
 
 import AnalysisStock
 import GetSaveStock
@@ -497,6 +498,7 @@ todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 def full_dump_list(stock_code_list, run_mysql, w_file):
     selects = []
+    stops = []
     if w_file:
         GetSaveStock.get_current_batch(stock_code_list, True)
         return selects
@@ -514,20 +516,24 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
         # history_list = GetSaveStock.get_excel(excel_file_name)
         if len(history_list) >= 20:
             nn = AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 7, 16), 7, 16)
+            mm = AnalysisStock.analysis_stop_time(AnalysisStock.get_analysis_info(history_list, 7, 16))
             if nn is not None:
                 selects.append(nn)
+            if mm is not None:
+                stops.append(mm)
         else:
             nn = AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 1, len(history_list) - 4), 1,
                                         len(history_list) - 4)
             if nn is not None:
                 selects.append(nn)
-    return selects
+    return selects, stops
 
 
 write_file = False
 run_with_mysql = True
 
 select_list = []
+stop_list = []
 l_num = 0
 page_size = 30
 if write_file:
@@ -535,11 +541,19 @@ if write_file:
         file.write("")
 while l_num < len(all_stock_code):
     print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
-    select_list.extend(full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, write_file))
+    dump = full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, write_file)
+    select_list.extend(dump[0])
+    stop_list.extend(dump[1])
     l_num = l_num + page_size
+stop_list.sort(key=attrgetter("times"), reverse=True)
 print("趋势分析满足要求的数量：--->", len(select_list))
-
 with open("..\\result\\" + todayStr + ".txt", "a") as file:
+    file.write("涨停数排行前五名: \n")
+    for stop in stop_list:
+        print(stop)
+        file.write(json.dumps(stop, ensure_ascii=False))
+        file.write("\n")
+    file.write("满足趋势分析可买标的: \n")
     for select in select_list:
         print(select)
         file.write(json.dumps(select, ensure_ascii=False))
