@@ -1,6 +1,5 @@
 import json
 import time
-from operator import attrgetter
 
 import AnalysisStock
 import GetSaveStock
@@ -545,10 +544,13 @@ while l_num < len(all_stock_code):
     select_list.extend(dump[0])
     stop_list.extend(dump[1])
     l_num = l_num + page_size
-stop_list.sort(key=attrgetter("times"), reverse=True)
-print("趋势分析满足要求的数量：--->", len(select_list))
+
+stop_list.sort(key=lambda k: (k.get('times', 0)), reverse=True)
+if len(stop_list) > 5:
+    stop_list = stop_list[:5]
+print("趋势分析满足要求的数量：--->", len(stop_list), "+++++", len(select_list))
 with open("..\\result\\" + todayStr + ".txt", "a") as file:
-    file.write("涨停数排行前五名: \n")
+    file.write("涨停数排行: \n")
     for stop in stop_list:
         print(stop)
         file.write(json.dumps(stop, ensure_ascii=False))

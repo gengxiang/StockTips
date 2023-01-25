@@ -63,6 +63,8 @@ def get_analysis_info(basic_list, ma_min, ma_max):
 
 
 def analysis_stop_time(analysis_info):
+    if 'ST' in analysis_info['name']:
+        return
     if analysis_info['times'] > 1:
         return analysis_info
 
