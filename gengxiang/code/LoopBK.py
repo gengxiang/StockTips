@@ -1,5 +1,9 @@
 # coding=gbk
+import json
+import time
 from urllib import request
+
+import pymysql
 
 all_BK = [
     {
@@ -520,13 +524,54 @@ all_BK = [
     }
 ]
 
+
+def save_bk_mysql(bk_stock):
+    mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
+                            database='stock_tips', charset='utf8')
+    cursor = mysql.cursor()
+
+    sql = "SELECT * FROM block_data_detail WHERE code = '%s' and date = '%s' limit 1" % \
+          (bk_stock['code'], bk_stock['date'])
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    if len(results) == 0:
+        sql = "INSERT INTO block_data_detail(code, name, date, price, amo, amp, qrr, hs)" \
+              "VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s)" % \
+              (bk_stock['code'], bk_stock['name'], bk_stock['date'], bk_stock['price'],
+               bk_stock['amo'], bk_stock['amp'], bk_stock['qrr'], bk_stock['hs'])
+        cursor.execute(sql)
+    else:
+        sql = "UPDATE block_data_detail SET price = %s, amo= %s, amp= %s, qrr = %s, hs = %s" \
+              "WHERE code = '%s' and date = '%s'" % \
+              (bk_stock['price'], bk_stock['amo'], bk_stock['amp'],
+               bk_stock['qrr'], bk_stock['hs'], bk_stock['code'], bk_stock['date'])
+        cursor.execute(sql)
+    mysql.commit()
+    cursor.close()
+
+
 print(type(all_BK))
+
+# 今天日期
+todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 for bk in all_BK:
     print(bk['f12'], "--->", bk['f14'])
     current_html = request.urlopen(
         'http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&invt=2&fltt=2&fields=f60,f43,f47,f48,f50,f58,f168,f170&secid=' + str(
             bk['f13']) + '.' + bk['f12'], timeout=1.0).read()
-    current_str = current_html.decode()
+    current_str = json.loads(current_html.decode())['data']
     print(current_str)
-    print("===")
+    bk_stock = {
+        'date': todayStr,  # 时间
+        'name': current_str['f58'],  # 名称
+        'code': str(bk['f13']) + '.' + bk['f12'],  # 编码
+        'price': float(current_str['f43']),  # 收盘价格
+        'amo': int(round(float(current_str['f48']) / 10000, 2)),  # 成交额（万元）
+        'amp': float(current_str['f170']),  # 涨跌幅%
+        'qrr': float(current_str['f50']),  # 量比
+        'hs': float(current_str['f168']),  # 换手率
+    }
+    save_bk_mysql(bk_stock)
+
+    print("===", bk_stock)
