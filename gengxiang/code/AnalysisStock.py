@@ -40,6 +40,7 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'code': basic_list[0]['code'],
         'name': basic_list[0]['name'],
         'times': stop_times,
+        'today_stop': basic_list[0]['stop_price'] == basic_list[0]['price'],
         'hs': basic_list[0]['hs'],
         'ahs': round(tuple_max0[2] / ma_max, 2),
         'price': basic_list[0]['price'],
@@ -65,7 +66,7 @@ def get_analysis_info(basic_list, ma_min, ma_max):
 def analysis_stop_time(analysis_info):
     if 'ST' in analysis_info['name']:
         return
-    if analysis_info['times'] > 1:
+    if analysis_info['today_stop'] and analysis_info['times'] > 1:
         return analysis_info
 
 
