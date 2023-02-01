@@ -525,32 +525,129 @@ all_BK = [
 ]
 
 
-def save_bk_mysql(bk_stock):
+def get_mysql(block_code):
+    b_k_list = []
+    mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
+                            database='stock_tips', charset='utf8')
+    cursor = mysql.cursor()
+    sql = "SELECT * FROM block_data_detail WHERE code = '%s' order by id desc limit 20" % block_code
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    for row in results:
+        stock = {
+            'date': row[3],
+            'name': row[2],
+            'code': row[1],
+            'price': row[4],
+            'amo': row[6],  # 成交额（万元）
+            'amp': row[5],  # 涨跌幅%
+            'qrr': row[7],  # 量比
+            'hs': row[8],  # 换手率
+        }
+        b_k_list.append(stock)
+    return b_k_list
+
+
+def save_bk_mysql(b_k_stock):
     mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
 
     sql = "SELECT * FROM block_data_detail WHERE code = '%s' and date = '%s' limit 1" % \
-          (bk_stock['code'], bk_stock['date'])
+          (b_k_stock['code'], b_k_stock['date'])
     cursor.execute(sql)
     results = cursor.fetchall()
     if len(results) == 0:
         sql = "INSERT INTO block_data_detail(code, name, date, price, amo, amp, qrr, hs)" \
               "VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s)" % \
-              (bk_stock['code'], bk_stock['name'], bk_stock['date'], bk_stock['price'],
-               bk_stock['amo'], bk_stock['amp'], bk_stock['qrr'], bk_stock['hs'])
+              (b_k_stock['code'], b_k_stock['name'], b_k_stock['date'], b_k_stock['price'],
+               b_k_stock['amo'], b_k_stock['amp'], b_k_stock['qrr'], b_k_stock['hs'])
         cursor.execute(sql)
     else:
         sql = "UPDATE block_data_detail SET price = %s, amo= %s, amp= %s, qrr = %s, hs = %s" \
               "WHERE code = '%s' and date = '%s'" % \
-              (bk_stock['price'], bk_stock['amo'], bk_stock['amp'],
-               bk_stock['qrr'], bk_stock['hs'], bk_stock['code'], bk_stock['date'])
+              (b_k_stock['price'], b_k_stock['amo'], b_k_stock['amp'],
+               b_k_stock['qrr'], b_k_stock['hs'], b_k_stock['code'], b_k_stock['date'])
         cursor.execute(sql)
     mysql.commit()
     cursor.close()
 
 
-print(type(all_BK))
+def get_block_total(basic_list):
+    total_b_price = 0
+    total_b_amo = 0
+    total_b_hs = 0
+    for per in basic_list:
+        total_b_price = total_b_price + per['price']
+        total_b_amo = total_b_amo + per['amo']
+        total_b_hs = total_b_hs + per['hs']
+    return total_b_price, total_b_amo, total_b_hs
+
+
+def get_analysis_info(basic_block_list, ma_min, ma_max):
+    if len(basic_block_list) < 5:
+        return None
+    tuple_min0 = get_block_total(basic_block_list[0: ma_min + 0])
+    tuple_max0 = get_block_total(basic_block_list[0: ma_max + 0])
+    tuple_min1 = get_block_total(basic_block_list[1: ma_min + 1])
+    tuple_max1 = get_block_total(basic_block_list[1: ma_max + 1])
+    tuple_min2 = get_block_total(basic_block_list[2: ma_min + 2])
+    tuple_max2 = get_block_total(basic_block_list[2: ma_max + 2])
+    tuple_min3 = get_block_total(basic_block_list[3: ma_min + 3])
+    tuple_max3 = get_block_total(basic_block_list[3: ma_max + 3])
+    tuple_min4 = get_block_total(basic_block_list[4: ma_min + 4])
+    tuple_max4 = get_block_total(basic_block_list[4: ma_max + 4])
+
+    analysis_info = {
+        'date': basic_block_list[0]['date'],
+        'code': basic_block_list[0]['code'],
+        'name': basic_block_list[0]['name'],
+        'hs': basic_block_list[0]['hs'],
+        'ahs': round(tuple_max0[2] / ma_max, 2),
+        'price': basic_block_list[0]['price'],
+        'aprice-0': [round(tuple_min0[0] / ma_min, 2), round(tuple_max0[0] / ma_max, 2)],
+        'aprice-1': [round(tuple_min1[0] / ma_min, 2), round(tuple_max1[0] / ma_max, 2)],
+        'aprice-2': [round(tuple_min2[0] / ma_min, 2), round(tuple_max2[0] / ma_max, 2)],
+        'aprice-3': [round(tuple_min3[0] / ma_min, 2), round(tuple_max3[0] / ma_max, 2)],
+        'aprice-4': [round(tuple_min4[0] / ma_min, 2), round(tuple_max4[0] / ma_max, 2)],
+        'amo': round(basic_block_list[0]['amo'] / 10000, 2),
+        'aamo-0': [round(tuple_min0[1] / ma_min / 10000, 2), round(tuple_max0[1] / ma_max / 10000, 2)],
+        'aamo-1': [round(tuple_min1[1] / ma_min / 10000, 2), round(tuple_max1[1] / ma_max / 10000, 2)],
+        'aamo-2': [round(tuple_min2[1] / ma_min / 10000, 2), round(tuple_max2[1] / ma_max / 10000, 2)],
+        'aamo-3': [round(tuple_min3[1] / ma_min / 10000, 2), round(tuple_max3[1] / ma_max / 10000, 2)],
+        'aamo-4': [round(tuple_min4[1] / ma_min / 10000, 2), round(tuple_max4[1] / ma_max / 10000, 2)],
+        'amp': basic_block_list[0]['amp'],
+        'qrr': basic_block_list[0]['qrr'],
+    }
+    return analysis_info
+
+
+def analysis(analysis_info, ma_min, ma_max):
+    if analysis_info['aprice-0'][0] < analysis_info['aprice-0'][1]:
+        return
+
+    aa_price = round((analysis_info['aprice-0'][1] + analysis_info['aprice-1'][1] + analysis_info['aprice-2'][1] +
+                      analysis_info['aprice-3'][1] + analysis_info['aprice-4'][1]) / 5, 2)
+    aat_volume = round((analysis_info['aamo-0'][1] + analysis_info['aamo-1'][1] + analysis_info['aamo-2'][1] +
+                        analysis_info['aamo-3'][1] + analysis_info['aamo-4'][1]) / 5, 2)
+    print(analysis_info['date'], "---->", analysis_info['name'], analysis_info['code'])
+    print("今天的收盘价:%9s" % analysis_info['price'], "MA", ma_min, ":%9s" % analysis_info['aprice-0'][0], "MA",
+          ma_max, ":%9s" % analysis_info['aprice-0'][1])
+    print("今天的交易额:%9s" % analysis_info['amo'], "MA", ma_min, ":%9s" % analysis_info['aamo-0'][0], "MA", ma_max,
+          ":%9s" % analysis_info['aamo-0'][1])
+    print("成交额高于MA", ma_min, ":", analysis_info['amo'] >= analysis_info['aamo-0'][0], "成交额高于MA", ma_max, ":",
+          analysis_info['amo'] >= analysis_info['aamo-0'][1],
+          "成交额MA", ma_max, "趋势向上:", analysis_info['aamo-0'][1] >= aat_volume)
+    print("收盘价高于MA", ma_min, ":", analysis_info['price'] >= analysis_info['aprice-0'][0], "收盘价高于MA", ma_max,
+          ":", analysis_info['price'] >= analysis_info['aprice-0'][1],
+          "收盘价MA", ma_max, "趋势向上:", analysis_info['aprice-0'][1] >= aa_price)
+    print("========================================================================================")
+    if (analysis_info['aamo-0'][1] >= aat_volume) & (analysis_info['aprice-0'][1] >= aa_price) \
+            & (analysis_info['amo'] >= analysis_info['aamo-0'][1]) & (
+            analysis_info['amo'] <= analysis_info['aamo-0'][0]) \
+            & (analysis_info['price'] >= analysis_info['aprice-0'][0]) & (analysis_info['aprice-0'][1] >= aa_price):
+        return analysis_info
+
 
 # 今天日期
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
@@ -561,7 +658,6 @@ for bk in all_BK:
         'http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&invt=2&fltt=2&fields=f60,f43,f47,f48,f50,f58,f168,f170&secid=' + str(
             bk['f13']) + '.' + bk['f12'], timeout=1.0).read()
     current_str = json.loads(current_html.decode())['data']
-    print(current_str)
     bk_stock = {
         'date': todayStr,  # 时间
         'name': current_str['f58'],  # 名称
@@ -573,5 +669,15 @@ for bk in all_BK:
         'hs': float(current_str['f168']),  # 换手率
     }
     save_bk_mysql(bk_stock)
+    total_block_list = get_mysql(str(bk['f13']) + '.' + bk['f12'])
+    selects = []
 
-    print("===", bk_stock)
+    if len(total_block_list) >= 20:
+        nn = analysis(get_analysis_info(total_block_list, 7, 16), 7, 16)
+        if nn is not None:
+            selects.append(nn)
+    else:
+        nn = analysis(get_analysis_info(total_block_list, 1, len(total_block_list) - 4), 1,
+                      len(total_block_list) - 4)
+        if nn is not None:
+            selects.append(nn)
