@@ -623,6 +623,8 @@ def get_analysis_info(basic_block_list, ma_min, ma_max):
 
 
 def analysis(analysis_info, ma_min, ma_max):
+    if analysis_info is None:
+        return
     if analysis_info['aprice-0'][0] < analysis_info['aprice-0'][1]:
         return
 
@@ -649,35 +651,42 @@ def analysis(analysis_info, ma_min, ma_max):
         return analysis_info
 
 
-# 今天日期
-todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
-
-for bk in all_BK:
-    print(bk['f12'], "--->", bk['f14'])
-    current_html = request.urlopen(
-        'http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&invt=2&fltt=2&fields=f60,f43,f47,f48,f50,f58,f168,f170&secid=' + str(
-            bk['f13']) + '.' + bk['f12'], timeout=1.0).read()
-    current_str = json.loads(current_html.decode())['data']
-    bk_stock = {
-        'date': todayStr,  # 时间
-        'name': current_str['f58'],  # 名称
-        'code': str(bk['f13']) + '.' + bk['f12'],  # 编码
-        'price': float(current_str['f43']),  # 收盘价格
-        'amo': int(round(float(current_str['f48']) / 10000, 2)),  # 成交额（万元）
-        'amp': float(current_str['f170']),  # 涨跌幅%
-        'qrr': float(current_str['f50']),  # 量比
-        'hs': float(current_str['f168']),  # 换手率
-    }
-    save_bk_mysql(bk_stock)
-    total_block_list = get_mysql(str(bk['f13']) + '.' + bk['f12'])
+def loop_bk():
+    # 今天日期
+    todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     selects = []
+    for bk in all_BK:
+        # print(bk['f12'], "--->", bk['f14'])
+        current_html = request.urlopen(
+            'http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&invt=2&fltt=2&fields=f60,f43,f47,f48,f50,f58,f168,f170&secid=' + str(
+                bk['f13']) + '.' + bk['f12'], timeout=1.0).read()
+        current_str = json.loads(current_html.decode())['data']
+        bk_stock = {
+            'date': todayStr,  # 时间
+            'name': current_str['f58'],  # 名称
+            'code': str(bk['f13']) + '.' + bk['f12'],  # 编码
+            'price': float(current_str['f43']),  # 收盘价格
+            'amo': int(round(float(current_str['f48']) / 10000, 2)),  # 成交额（万元）
+            'amp': float(current_str['f170']),  # 涨跌幅%
+            'qrr': float(current_str['f50']),  # 量比
+            'hs': float(current_str['f168']),  # 换手率
+        }
+        save_bk_mysql(bk_stock)
+        total_block_list = get_mysql(str(bk['f13']) + '.' + bk['f12'])
+        # print(total_block_list)
 
-    if len(total_block_list) >= 20:
-        nn = analysis(get_analysis_info(total_block_list, 7, 16), 7, 16)
-        if nn is not None:
-            selects.append(nn)
-    else:
-        nn = analysis(get_analysis_info(total_block_list, 1, len(total_block_list) - 4), 1,
-                      len(total_block_list) - 4)
-        if nn is not None:
-            selects.append(nn)
+        if len(total_block_list) >= 20:
+            nn = analysis(get_analysis_info(total_block_list, 7, 16), 7, 16)
+            if nn is not None:
+                selects.append(nn)
+        else:
+            nn = analysis(get_analysis_info(total_block_list, 1, len(total_block_list) - 4), 1,
+                          len(total_block_list) - 4)
+            if nn is not None:
+                selects.append(nn)
+    return selects
+
+
+# loop_bk()
+todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+print(todayStr)

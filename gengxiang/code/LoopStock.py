@@ -3,6 +3,8 @@ import time
 
 import AnalysisStock
 import GetSaveStock
+import LoopBK
+from gengxiang.code import Wechat
 
 all_stock_code = [
     'sz399001', 'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
@@ -531,34 +533,43 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
 write_file = False
 run_with_mysql = True
 
-select_list = []
-stop_list = []
-l_num = 0
-page_size = 30
-if write_file:
-    with open("..\data\\" + todayStr + ".txt", "w") as file:
+
+def loop_stock():
+    select_list = []
+    stop_list = []
+    l_num = 0
+    page_size = 30
+    if write_file:
+        with open("..\data\\" + todayStr + ".txt", "w") as file:
+            file.write("")
+    with open("..\\result\\" + todayStr + ".txt", "w") as file:
         file.write("")
-while l_num < len(all_stock_code):
-    print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
-    dump = full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, write_file)
-    select_list.extend(dump[0])
-    stop_list.extend(dump[1])
-    l_num = l_num + page_size
+    while l_num < len(all_stock_code):
+        print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
+        dump = full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, write_file)
+        select_list.extend(dump[0])
+        stop_list.extend(dump[1])
+        l_num = l_num + page_size
+    stop_list.sort(key=lambda k: (k.get('times', 0)), reverse=True)
+    if len(stop_list) > 10:
+        stop_list = stop_list[:10]
+        if stop_list[0]['times'] > 3:
+            stop_list = list(filter(lambda o: o['times'] > 3., stop_list))
+    print("趋势分析满足要求的数量：--->", len(stop_list), "+++++", len(select_list))
+    with open("..\\result\\" + todayStr + ".txt", "a") as file:
+        file.write("涨停数排行: \n")
+        for stop in stop_list:
+            print(stop)
+            file.write(json.dumps(stop, ensure_ascii=False))
+            file.write("\n")
+        file.write("满足趋势分析可买标的: \n")
+        for select in select_list:
+            print(select)
+            file.write(json.dumps(select, ensure_ascii=False))
+            file.write("\n")
+    full_dump_list(['sh000001', 'sz399001'], run_with_mysql, write_file)
+    return stop_list
 
-stop_list.sort(key=lambda k: (k.get('times', 0)), reverse=True)
-if len(stop_list) > 10:
-    stop_list = stop_list[:10]
-print("趋势分析满足要求的数量：--->", len(stop_list), "+++++", len(select_list))
-with open("..\\result\\" + todayStr + ".txt", "a") as file:
-    file.write("涨停数排行: \n")
-    for stop in stop_list:
-        print(stop)
-        file.write(json.dumps(stop, ensure_ascii=False))
-        file.write("\n")
-    file.write("满足趋势分析可买标的: \n")
-    for select in select_list:
-        print(select)
-        file.write(json.dumps(select, ensure_ascii=False))
-        file.write("\n")
 
-full_dump_list(['sh000001', 'sz399001'], run_with_mysql, write_file)
+Wechat.send_wechat_stock(loop_stock())
+Wechat.send_wechat_bk(LoopBK.loop_bk())
