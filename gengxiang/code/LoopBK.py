@@ -686,7 +686,7 @@ def loop_bk():
     return selects
 
 
-def write_bk():
+def write_bk_file():
     # 今天日期
     today_str = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     with open("..\data\\" + today_str + "_bk.txt", "w") as file:
@@ -700,7 +700,7 @@ def write_bk():
             print("写入文件->", current_html.decode())
 
 
-def get_file():
+def get_bk_file():
     with open("..\data\\" + todayStr + "_bk.txt", "r") as file:
         line = file.readline()
         while line:
@@ -724,5 +724,5 @@ def get_file():
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 # loop_bk()
-# write_bk()
-get_file()
+# write_bk_file()
+# get_bk_file()

@@ -534,13 +534,38 @@ run_with_mysql = True
 write_file = True
 
 
-def write_stock():
+def write_stock_file():
     with open("..\data\\" + todayStr + ".txt", "w") as file:
         file.write("")
 
     l_num = 0
     while l_num < len(all_stock_code):
         full_dump_list(all_stock_code[l_num: l_num + 30], run_with_mysql, True)
+
+
+def get_stock_file():
+    with open("..\data\\" + todayStr + ".txt", "r") as file:
+        line = file.readline()
+        while line:
+            current_arr = str(line).split('~')
+            stock = {
+                'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
+                'name': current_arr[1],  # 名称
+                'code': current_arr[0][2:10],  # 编码
+                'price': float(current_arr[3]),  # 收盘价格
+                'stop_price': float(current_arr[47]),  # 涨停价格
+                'amo': int(float(current_arr[37])),  # 成交额（万元）
+                'amp': float(current_arr[32]),  # 涨跌幅%
+                'qrr': float(current_arr[49]),  # 量比
+                'hs': float(current_arr[38]),  # 换手率
+                'mc': float(current_arr[45]),  # 总市值
+                'per': float(current_arr[39]),  # 市盈率
+                'pb': float(current_arr[46]),  # 市净率
+            }
+            stocks = [stock]
+            GetSaveStock.save_mysql(stocks)
+            print("保存数据mysql->", stocks)
+            line = file.readline()
 
 
 def loop_stock():
@@ -585,5 +610,6 @@ def wechat_stock_bk():
     Wechat.send_wechat_bk(LoopBK.loop_bk())
 
 
-# wechat_stock_bk()
-write_stock()
+wechat_stock_bk()
+# write_stock_file()
+# get_stock_file()

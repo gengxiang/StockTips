@@ -213,30 +213,3 @@ def get_current_batch(stock_codes, write_file):
                 stocks.append(stock)
     return stocks
 
-
-def get_current_file():
-    with open("..\data\\" + todayStr + ".txt", "r") as file:
-        line = file.readline()
-        while line:
-            current_arr = str(line).split('~')
-            stock = {
-                'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
-                'name': current_arr[1],  # 名称
-                'code': current_arr[0][2:10],  # 编码
-                'price': float(current_arr[3]),  # 收盘价格
-                'stop_price': float(current_arr[47]),  # 涨停价格
-                'amo': int(float(current_arr[37])),  # 成交额（万元）
-                'amp': float(current_arr[32]),  # 涨跌幅%
-                'qrr': float(current_arr[49]),  # 量比
-                'hs': float(current_arr[38]),  # 换手率
-                'mc': float(current_arr[45]),  # 总市值
-                'per': float(current_arr[39]),  # 市盈率
-                'pb': float(current_arr[46]),  # 市净率
-            }
-            stocks = [stock]
-            save_mysql(stocks)
-            print("保存数据mysql->", stocks)
-            line = file.readline()
-
-
-# get_current_file()
