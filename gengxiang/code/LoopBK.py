@@ -652,14 +652,13 @@ def analysis(analysis_info, ma_min, ma_max):
 
 
 def loop_bk():
-    # 今天日期
-    todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
     selects = []
     for bk in all_BK:
         # print(bk['f12'], "--->", bk['f14'])
         current_html = request.urlopen(
             'http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&invt=2&fltt=2&fields=f60,f43,f47,f48,f50,f58,f168,f170&secid=' + str(
                 bk['f13']) + '.' + bk['f12'], timeout=1.0).read()
+
         current_str = json.loads(current_html.decode())['data']
         bk_stock = {
             'date': todayStr,  # 时间
@@ -687,6 +686,43 @@ def loop_bk():
     return selects
 
 
-# loop_bk()
+def write_bk():
+    # 今天日期
+    today_str = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+    with open("..\data\\" + today_str + "_bk.txt", "w") as file:
+        file.write("")
+    for bk in all_BK:
+        current_html = request.urlopen(
+            'http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&invt=2&fltt=2&fields=f60,f43,f47,f48,f50,f58,f168,f170&secid=' + str(
+                bk['f13']) + '.' + bk['f12'], timeout=1.0).read()
+        with open("..\data\\" + today_str + "_bk.txt", "a") as file:
+            file.write(str(bk['f13']) + '.' + bk['f12'] + "->" + current_html.decode() + "\n")
+            print("写入文件->", current_html.decode())
+
+
+def get_file():
+    with open("..\data\\" + todayStr + "_bk.txt", "r") as file:
+        line = file.readline()
+        while line:
+            current_str = json.loads(str(line)[11:])['data']
+            bk_stock = {
+                'date': todayStr,  # 时间
+                'name': current_str['f58'],  # 名称
+                'code': str(line)[:8],  # 编码
+                'price': float(current_str['f43']),  # 收盘价格
+                'amo': int(round(float(current_str['f48']) / 10000, 2)),  # 成交额（万元）
+                'amp': float(current_str['f170']),  # 涨跌幅%
+                'qrr': float(current_str['f50']),  # 量比
+                'hs': float(current_str['f168']),  # 换手率
+            }
+            # save_bk_mysql(bk_stock)
+            print("保存数据mysql->", bk_stock)
+            line = file.readline()
+
+
+# 今天日期
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
-print(todayStr)
+
+# loop_bk()
+# write_bk()
+get_file()

@@ -530,8 +530,17 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
     return selects, stops
 
 
-write_file = False
 run_with_mysql = True
+write_file = True
+
+
+def write_stock():
+    with open("..\data\\" + todayStr + ".txt", "w") as file:
+        file.write("")
+
+    l_num = 0
+    while l_num < len(all_stock_code):
+        full_dump_list(all_stock_code[l_num: l_num + 30], run_with_mysql, True)
 
 
 def loop_stock():
@@ -571,5 +580,10 @@ def loop_stock():
     return stop_list
 
 
-Wechat.send_wechat_stock(loop_stock())
-Wechat.send_wechat_bk(LoopBK.loop_bk())
+def wechat_stock_bk():
+    Wechat.send_wechat_stock(loop_stock())
+    Wechat.send_wechat_bk(LoopBK.loop_bk())
+
+
+# wechat_stock_bk()
+write_stock()
