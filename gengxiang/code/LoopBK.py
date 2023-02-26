@@ -723,6 +723,5 @@ def get_bk_file():
 # 今天日期
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
-# loop_bk()
 # write_bk_file()
 # get_bk_file()
