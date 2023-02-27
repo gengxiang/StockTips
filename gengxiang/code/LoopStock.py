@@ -541,6 +541,8 @@ def write_stock_file():
     l_num = 0
     while l_num < len(all_stock_code):
         full_dump_list(all_stock_code[l_num: l_num + 30], run_with_mysql, True)
+        l_num = l_num + 30
+    print("结束")
 
 
 def get_stock_file():
@@ -548,6 +550,8 @@ def get_stock_file():
         line = file.readline()
         while line:
             current_arr = str(line).split('~')
+            if current_arr[39] == '':
+                current_arr[39] = 0
             stock = {
                 'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
                 'name': current_arr[1],  # 名称

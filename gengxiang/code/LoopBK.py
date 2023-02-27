@@ -704,7 +704,7 @@ def get_bk_file():
     with open("..\data\\" + todayStr + "_bk.txt", "r") as file:
         line = file.readline()
         while line:
-            current_str = json.loads(str(line)[11:])['data']
+            current_str = json.loads(line[11:len(line) - 1])['data']
             bk_stock = {
                 'date': todayStr,  # Ê±¼ä
                 'name': current_str['f58'],  # Ãû³Æ
