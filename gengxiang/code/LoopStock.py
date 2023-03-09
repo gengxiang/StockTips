@@ -530,10 +530,6 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
     return selects, stops
 
 
-run_with_mysql = True
-write_file = True
-
-
 def write_stock_file():
     with open("..\data\\" + todayStr + ".txt", "w") as file:
         file.write("")
@@ -572,19 +568,19 @@ def get_stock_file():
             line = file.readline()
 
 
+run_with_mysql = True
+
+
 def loop_stock():
     select_list = []
     stop_list = []
     l_num = 0
     page_size = 30
-    if write_file:
-        with open("..\data\\" + todayStr + ".txt", "w") as file:
-            file.write("")
     with open("..\\result\\" + todayStr + ".txt", "w") as file:
         file.write("")
     while l_num < len(all_stock_code):
         print(l_num, '~', l_num + page_size, "->", all_stock_code[l_num: l_num + page_size])
-        dump = full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, write_file)
+        dump = full_dump_list(all_stock_code[l_num: l_num + page_size], run_with_mysql, False)
         select_list.extend(dump[0])
         stop_list.extend(dump[1])
         l_num = l_num + page_size
@@ -605,15 +601,11 @@ def loop_stock():
             print(select)
             file.write(json.dumps(select, ensure_ascii=False))
             file.write("\n")
-    full_dump_list(['sh000001', 'sz399001'], run_with_mysql, write_file)
+    full_dump_list(['sh000001', 'sz399001'], run_with_mysql, False)
     return stop_list
 
 
-def wechat_stock_bk():
-    Wechat.send_wechat_stock(loop_stock())
-    Wechat.send_wechat_bk(LoopBK.loop_bk())
-
-
-wechat_stock_bk()
+Wechat.send_wechat_stock(loop_stock())
+Wechat.send_wechat_bk(LoopBK.loop_bk())
 # write_stock_file()
 # get_stock_file()
