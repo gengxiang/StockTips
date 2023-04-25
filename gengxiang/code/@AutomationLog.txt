@@ -1,0 +1,2 @@
+2023-03-09 19:41:58.230 wxauto.py[173] Search -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2023-03-13 21:59:37.106 wxauto.py[173] Search -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
