@@ -34,7 +34,7 @@ def send_wechat_bk(select_list):
     to = "耿翔"  # 要发送的人
     wx = WeChat()  # 获取当前微信客户端
     wx.Search(to)  # 打开聊天窗口
-    wx.SendMsg("todayStr 板块信息：")
+    wx.SendMsg(todayStr + "板块信息：")
     for stop in select_list:
         wx.SendMsg(stop['code'] + ':' + stop['name'] + " ->" + str(stop['ahs']))  # 发送消息
     print("发送结束！")
