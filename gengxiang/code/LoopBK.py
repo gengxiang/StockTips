@@ -734,7 +734,7 @@ headers = {
 current_l = requests.get("http://q.10jqka.com.cn/thshy/index/field/199112/order/desc/page/2/ajax/1/", headers=headers)
 print(current_l.text)
 soup = BeautifulSoup(current_l.text, 'html.parser')
-# print(soup)
+print(soup)
 
 for tr in soup.findAll("tr"):
     print(tr)

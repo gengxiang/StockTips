@@ -1,5 +1,6 @@
 import json
 import time
+from threading import Timer
 
 import AnalysisStock
 import GetSaveStock
@@ -7,7 +8,7 @@ import LoopBK
 from gengxiang.code import Wechat
 
 all_stock_code = [
-    'sz399001', 'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
+    'sz000001', 'sz000002', 'sz000004', 'sz000005', 'sz000006', 'sz000007', 'sz000008', 'sz000009',
     'sz000010', 'sz000011', 'sz000012', 'sz000014', 'sz000016', 'sz000017', 'sz000019', 'sz000020', 'sz000021',
     'sz000023', 'sz000025', 'sz000026', 'sz000027', 'sz000028', 'sz000029', 'sz000030', 'sz000031', 'sz000032',
     'sz000034', 'sz000035', 'sz000036', 'sz000037', 'sz000038', 'sz000039', 'sz000040', 'sz000042', 'sz000045',
@@ -307,7 +308,7 @@ all_stock_code = [
     'sz301296', 'sz301298', 'sz301299', 'sz301300', 'sz301302', 'sz301306', 'sz301308', 'sz301309', 'sz301312',
     'sz301313', 'sz301316', 'sz301318', 'sz301319', 'sz301321', 'sz301326', 'sz301327', 'sz301328', 'sz301330',
     'sz301331', 'sz301333', 'sz301336', 'sz301338', 'sz301339', 'sz301349', 'sz301363', 'sz301366', 'sz301369',
-    'sh000001', 'sh600000', 'sh600004', 'sh600006', 'sh600007', 'sh600008', 'sh600009', 'sh600010', 'sh600011',
+    'sh600000', 'sh600004', 'sh600006', 'sh600007', 'sh600008', 'sh600009', 'sh600010', 'sh600011',
     'sh600015', 'sh600016', 'sh600017', 'sh600018', 'sh600019', 'sh600020', 'sh600021', 'sh600022', 'sh600023',
     'sh600025', 'sh600026', 'sh600027', 'sh600028', 'sh600029', 'sh600030', 'sh600031', 'sh600032', 'sh600033',
     'sh600035', 'sh600036', 'sh600037', 'sh600038', 'sh600039', 'sh600048', 'sh600050', 'sh600051', 'sh600052',
@@ -497,6 +498,19 @@ all_stock_code = [
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
+def zs_dump_list(stock_code_list):
+    selects = []
+    total_amo = 0
+
+    # 获取基础信息
+    today_list = GetSaveStock.get_current_batch(stock_code_list, False)
+    for num in range(0, len(stock_code_list)):
+        selects.append(today_list[num])
+        total_amo += today_list[num]['amo']
+
+    return total_amo
+
+
 def full_dump_list(stock_code_list, run_mysql, w_file):
     selects = []
     stops = []
@@ -575,7 +589,7 @@ def loop_stock():
     select_list = []
     stop_list = []
     l_num = 0
-    page_size = 30
+    page_size = 50
     with open("..\\result\\" + todayStr + ".txt", "w") as file:
         file.write("")
     while l_num < len(all_stock_code):
@@ -601,11 +615,16 @@ def loop_stock():
             print(select)
             file.write(json.dumps(select, ensure_ascii=False))
             file.write("\n")
-    full_dump_list(['sh000001', 'sz399001'], run_with_mysql, False)
-    return stop_list
+    # full_dump_list(['sh000001', 'sz399001'], run_with_mysql, False)
+    return stop_list, select_list
 
 
-Wechat.send_wechat_stock(loop_stock())
-Wechat.send_wechat_bk(LoopBK.loop_bk())
-# write_stock_file()
-# get_stock_file()
+def timerRun():
+    Wechat.send_wechat_tips(zs_dump_list(['sh000001', 'sz399001']))
+    Wechat.send_wechat_bk(LoopBK.loop_bk())
+    loop = loop_stock()
+    Wechat.send_wechat_stock(loop[0], loop[1])
+    Timer(86400, timerRun).start()
+
+
+timerRun()

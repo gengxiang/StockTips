@@ -1,6 +1,8 @@
 import time
 
 # 今天日期
+from gengxiang.code.Wechat import send_wechat
+
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
@@ -73,13 +75,17 @@ def analysis_stop_time(analysis_info):
 def analysis(analysis_info, ma_min, ma_max):
     if analysis_info['code'] != 'sh000001' and analysis_info['code'] != 'sz399001':
         # 非ST 非银行 非地产
-        if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '地产' in analysis_info['name']:
+        if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '证券' in analysis_info[
+            'name'] or '地产' in analysis_info['name']:
             return
         # 未涨停
         elif analysis_info['times'] < 1 or analysis_info['amp'] > 9.8:
             return
+        # 市净率
+        elif analysis_info['per'] < 0 or analysis_info['per'] > 100:
+            return
         # 平均换手率小于1.5 或大于8 ,平均成交额小于5000w, ma_min < ma_max
-        elif analysis_info['ahs'] < 1.5 or analysis_info['hs'] > 8 or analysis_info['aamo-0'][1] < 0.5 or \
+        elif analysis_info['ahs'] < 1.9 or analysis_info['hs'] > 8 or analysis_info['aamo-0'][1] < 0.5 or \
                 analysis_info['aprice-0'][0] < analysis_info['aprice-0'][1]:
             return
 
@@ -87,6 +93,7 @@ def analysis(analysis_info, ma_min, ma_max):
                       analysis_info['aprice-3'][1] + analysis_info['aprice-4'][1]) / 5, 2)
     aat_volume = round((analysis_info['aamo-0'][1] + analysis_info['aamo-1'][1] + analysis_info['aamo-2'][1] +
                         analysis_info['aamo-3'][1] + analysis_info['aamo-4'][1]) / 5, 2)
+
     print(analysis_info['date'], "---->", analysis_info['name'], analysis_info['code'])
     print("今天的收盘价:%9s" % analysis_info['price'], "MA", ma_min, ":%9s" % analysis_info['aprice-0'][0], "MA",
           ma_max, ":%9s" % analysis_info['aprice-0'][1])
@@ -98,6 +105,19 @@ def analysis(analysis_info, ma_min, ma_max):
     print("收盘价高于MA", ma_min, ":", analysis_info['price'] >= analysis_info['aprice-0'][0], "收盘价高于MA", ma_max,
           ":", analysis_info['price'] >= analysis_info['aprice-0'][1],
           "收盘价MA", ma_max, "趋势向上:", analysis_info['aprice-0'][1] >= aa_price)
+    if analysis_info['code'] == 'sh000001' or analysis_info['code'] == 'sz399001':
+        send_wechat(analysis_info['date'] + "---->" + analysis_info['name'] + analysis_info['code']
+                    + "\n 收盘价: " + str(analysis_info['price'])
+                    + "   MA" + str(ma_min) + ": " + str(analysis_info['aprice-0'][0])
+                    + "   MA" + str(ma_max) + ": " + str(analysis_info['aprice-0'][1])
+                    + "\n 交易额: " + str(analysis_info['amo'])
+                    + "   MA" + str(ma_max) + ": " + str(analysis_info['aamo-0'][1])
+                    + "\n 价高于MA" + str(ma_min) + ": " + str(analysis_info['price'] >= analysis_info['aprice-0'][0])
+                    + " 价高于MA" + str(ma_max) + ": " + str(analysis_info['price'] >= analysis_info['aprice-0'][1])
+                    + "\n 额高于MA" + str(ma_min) + ": " + str(analysis_info['amo'] >= analysis_info['aamo-0'][0])
+                    + " 额高于MA" + str(ma_max) + ": " + str(analysis_info['amo'] >= analysis_info['aamo-0'][1])
+                    + "\n 成交价MA" + str(ma_max) + "趋势向上: " + str(analysis_info['aprice-0'][1] >= aa_price)
+                    + "\n 成交额MA" + str(ma_max) + "趋势向上: " + str(analysis_info['aamo-0'][1] >= aat_volume))
     print("========================================================================================")
     if (analysis_info['aamo-0'][1] >= aat_volume) & (analysis_info['aprice-0'][1] >= aa_price) \
             & (analysis_info['amo'] >= analysis_info['aamo-0'][1]) & (
