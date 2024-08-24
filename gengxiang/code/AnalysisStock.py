@@ -22,10 +22,14 @@ def get_analysis_info(basic_list, ma_min, ma_max):
     if llen < 5:
         return None
     stop_times = 0
+    max_prices = 0
     for history in basic_list:
         if history['stop_price'] == history['price'] or (history['stop_price'] <= 0.0 and history['amp'] > 9.8):
             stop_times = stop_times + 1
+        if history['price'] > max_prices:
+            max_prices = history['price']
 
+    # 价格、金额、换手的总值 MA7，MA16
     tuple_min0 = get_total(basic_list[0: ma_min + 0])
     tuple_max0 = get_total(basic_list[0: ma_max + 0])
     tuple_min1 = get_total(basic_list[1: ma_min + 1])
@@ -42,6 +46,7 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'code': basic_list[0]['code'],
         'name': basic_list[0]['name'],
         'times': stop_times,
+        'max_prices': max_prices,
         'today_stop': basic_list[0]['stop_price'] == basic_list[0]['price'],
         'hs': basic_list[0]['hs'],
         'ahs': round(tuple_max0[2] / ma_max, 2),

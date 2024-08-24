@@ -50,8 +50,9 @@ def send_wechat_stock(stop_list, select_list):
     msg2 = todayStr + "趋势个股信息："
     for select in select_list:
         info = get_mysql(stop['name'])
-        msg2 = msg2 + "\n" + str(select['times']) + " -> " + select['code'] + ' : ' + select['name'] + \
-               "\n " + info[2] + "\n " + info[4] + "\n =================="
+        msg2 = msg2 + "\n" + str(select['times']) + " -> " + select['code'] + ' : ' + select[
+            'name'] + " , 最大跌幅：" + str(((select['max_prices'] - select['price']) / select['price']) * 100) + "%" \
+               + "\n " + info[2] + "\n " + info[4] + "\n =================="
     send_wechat(msg2)
 
 
