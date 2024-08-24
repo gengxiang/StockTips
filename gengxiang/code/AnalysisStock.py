@@ -73,6 +73,9 @@ def analysis_stop_time(analysis_info):
 
 
 def analysis(analysis_info, ma_min, ma_max):
+    if analysis_info is None:
+        return
+
     if analysis_info['code'] != 'sh000001' and analysis_info['code'] != 'sz399001':
         # 非ST 非银行 非地产
         if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '证券' in analysis_info[
