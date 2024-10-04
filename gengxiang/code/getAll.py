@@ -39,15 +39,17 @@ def get_mysql(name):
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
 
-    sql = "SELECT * FROM stock_info WHERE stock_name = '%s' limit 1" % \
+    sql = "SELECT * FROM stock_info WHERE concat(market_code,code) = '%s' limit 1" % \
           (str(name))
     cursor.execute(sql)
     results = cursor.fetchall()
-    return results[0]
+    if len(results) == 1:
+        return results[0]
+    return None
 
-
-stock = get_mysql('众泰汽车')
-print(str(stock[2]))
+#
+# stock = get_mysql('众泰汽车')
+# print(str(stock[2]))
 
 # l_num = 0
 #

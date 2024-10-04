@@ -152,7 +152,7 @@ def get_mysql(stock_code):
     mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
-    sql = "SELECT * FROM stock_data_detail WHERE code = '%s' order by id desc limit 20" % stock_code
+    sql = "SELECT * FROM stock_data_detail WHERE code = '%s' order by id desc limit 30" % stock_code
     cursor.execute(sql)
     results = cursor.fetchall()
     for row in results:

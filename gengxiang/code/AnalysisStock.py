@@ -1,7 +1,6 @@
 import time
 
 # 今天日期
-from gengxiang.code.Wechat import send_wechat
 
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
@@ -17,6 +16,20 @@ def get_total(basic_list):
     return total_price, total_amo, total_hs
 
 
+def get_avg(basic_list):
+    total_price = 0
+    total_amo = 0
+    total_hs = 0
+    for per in basic_list:
+        total_price = total_price + per['price']
+        total_amo = total_amo + per['amo']
+        total_hs = total_hs + per['hs']
+    avg_price = round(total_price / len(basic_list), 2)
+    avg_amo = round(total_amo / len(basic_list), 2)
+    avg_hs = round(total_hs / len(basic_list), 2)
+    return avg_price, avg_amo, avg_hs
+
+
 def get_analysis_info(basic_list, ma_min, ma_max):
     llen = len(basic_list)
     if llen < 5:
@@ -29,17 +42,19 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         if history['price'] > max_prices:
             max_prices = history['price']
 
-    # 价格、金额、换手的总值 MA7，MA16
-    tuple_min0 = get_total(basic_list[0: ma_min + 0])
-    tuple_max0 = get_total(basic_list[0: ma_max + 0])
-    tuple_min1 = get_total(basic_list[1: ma_min + 1])
-    tuple_max1 = get_total(basic_list[1: ma_max + 1])
-    tuple_min2 = get_total(basic_list[2: ma_min + 2])
-    tuple_max2 = get_total(basic_list[2: ma_max + 2])
-    tuple_min3 = get_total(basic_list[3: ma_min + 3])
-    tuple_max3 = get_total(basic_list[3: ma_max + 3])
-    tuple_min4 = get_total(basic_list[4: ma_min + 4])
-    tuple_max4 = get_total(basic_list[4: ma_max + 4])
+    # 价格、金额、换手的平均值 MA7，MA16
+    # 最近5天 MA16平均价格、平均金额、平均换手
+    max_avg0 = get_avg(basic_list[0: ma_max + 0])
+    max_avg1 = get_avg(basic_list[1: ma_max + 1])
+    max_avg2 = get_avg(basic_list[2: ma_max + 2])
+    max_avg3 = get_avg(basic_list[3: ma_max + 3])
+    max_avg4 = get_avg(basic_list[4: ma_max + 4])
+    # 最近5天 MA7 平均价格、平均金额、平均换手
+    min_avg0 = get_avg(basic_list[0: ma_min + 0])
+    min_avg1 = get_avg(basic_list[1: ma_min + 1])
+    min_avg2 = get_avg(basic_list[2: ma_min + 2])
+    min_avg3 = get_avg(basic_list[3: ma_min + 3])
+    min_avg4 = get_avg(basic_list[4: ma_min + 4])
 
     analysis_info = {
         'date': basic_list[0]['date'],
@@ -49,22 +64,33 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'max_prices': max_prices,
         'today_stop': basic_list[0]['stop_price'] == basic_list[0]['price'],
         'hs': basic_list[0]['hs'],
-        'ahs': round(tuple_max0[2] / ma_max, 2),
+        'ahs': max_avg0[2],
         'price': basic_list[0]['price'],
-        'aprice-0': [round(tuple_min0[0] / ma_min, 2), round(tuple_max0[0] / ma_max, 2)],
-        'aprice-1': [round(tuple_min1[0] / ma_min, 2), round(tuple_max1[0] / ma_max, 2)],
-        'aprice-2': [round(tuple_min2[0] / ma_min, 2), round(tuple_max2[0] / ma_max, 2)],
-        'aprice-3': [round(tuple_min3[0] / ma_min, 2), round(tuple_max3[0] / ma_max, 2)],
-        'aprice-4': [round(tuple_min4[0] / ma_min, 2), round(tuple_max4[0] / ma_max, 2)],
+        # 近5日价格 MA7,, MA16
+        'aprice-0': [min_avg0[0], max_avg0[0]],
+        'aprice-1': [min_avg1[0], max_avg1[0]],
+        'aprice-2': [min_avg2[0], max_avg2[0]],
+        'aprice-3': [min_avg3[0], max_avg3[0]],
+        'aprice-4': [min_avg4[0], max_avg4[0]],
+        # 近5日成交额 MA7,, MA16
+        'aamo-0': [min_avg0[1], max_avg0[1]],
+        'aamo-1': [min_avg1[1], max_avg1[1]],
+        'aamo-2': [min_avg2[1], max_avg2[1]],
+        'aamo-3': [min_avg3[1], max_avg3[1]],
+        'aamo-4': [min_avg4[1], max_avg4[1]],
+        # 近5日成交额
         'amo': round(basic_list[0]['amo'] / 10000, 2),
-        'aamo-0': [round(tuple_min0[1] / ma_min / 10000, 2), round(tuple_max0[1] / ma_max / 10000, 2)],
-        'aamo-1': [round(tuple_min1[1] / ma_min / 10000, 2), round(tuple_max1[1] / ma_max / 10000, 2)],
-        'aamo-2': [round(tuple_min2[1] / ma_min / 10000, 2), round(tuple_max2[1] / ma_max / 10000, 2)],
-        'aamo-3': [round(tuple_min3[1] / ma_min / 10000, 2), round(tuple_max3[1] / ma_max / 10000, 2)],
-        'aamo-4': [round(tuple_min4[1] / ma_min / 10000, 2), round(tuple_max4[1] / ma_max / 10000, 2)],
-        'amp': basic_list[0]['amp'],
+        'amo-1': round(basic_list[1]['amo'] / 10000, 2),
+        'amo-2': round(basic_list[2]['amo'] / 10000, 2),
+        'amo-3': round(basic_list[3]['amo'] / 10000, 2),
+        'amo-4': round(basic_list[4]['amo'] / 10000, 2),
+        # 20日内涨跌幅
+        'amp': round((max_prices - basic_list[0]['price']) / max_prices, 2),
+        # 总市值
         'mc': basic_list[0]['mc'],
+        # 市盈率
         'per': basic_list[0]['per'],
+        # 市净率
         'pb': basic_list[0]['pb']
     }
     return analysis_info
@@ -87,7 +113,7 @@ def analysis(analysis_info, ma_min, ma_max):
             'name'] or '地产' in analysis_info['name']:
             return
         # 未涨停
-        elif analysis_info['times'] < 1 or analysis_info['amp'] > 9.8:
+        elif analysis_info['times'] < 1 or analysis_info['amp'] > 0.25:
             return
         # 市净率
         elif analysis_info['per'] < 0 or analysis_info['per'] > 100:
@@ -99,36 +125,20 @@ def analysis(analysis_info, ma_min, ma_max):
 
     aa_price = round((analysis_info['aprice-0'][1] + analysis_info['aprice-1'][1] + analysis_info['aprice-2'][1] +
                       analysis_info['aprice-3'][1] + analysis_info['aprice-4'][1]) / 5, 2)
-    aat_volume = round((analysis_info['aamo-0'][1] + analysis_info['aamo-1'][1] + analysis_info['aamo-2'][1] +
-                        analysis_info['aamo-3'][1] + analysis_info['aamo-4'][1]) / 5, 2)
 
-    print(analysis_info['date'], "---->", analysis_info['name'], analysis_info['code'])
-    print("今天的收盘价:%9s" % analysis_info['price'], "MA", ma_min, ":%9s" % analysis_info['aprice-0'][0], "MA",
-          ma_max, ":%9s" % analysis_info['aprice-0'][1])
-    print("今天的交易额:%9s" % analysis_info['amo'], "MA", ma_min, ":%9s" % analysis_info['aamo-0'][0], "MA", ma_max,
-          ":%9s" % analysis_info['aamo-0'][1])
-    print("成交额高于MA", ma_min, ":", analysis_info['amo'] >= analysis_info['aamo-0'][0], "成交额高于MA", ma_max, ":",
-          analysis_info['amo'] >= analysis_info['aamo-0'][1],
-          "成交额MA", ma_max, "趋势向上:", analysis_info['aamo-0'][1] >= aat_volume)
-    print("收盘价高于MA", ma_min, ":", analysis_info['price'] >= analysis_info['aprice-0'][0], "收盘价高于MA", ma_max,
-          ":", analysis_info['price'] >= analysis_info['aprice-0'][1],
-          "收盘价MA", ma_max, "趋势向上:", analysis_info['aprice-0'][1] >= aa_price)
-    if analysis_info['code'] == 'sh000001' or analysis_info['code'] == 'sz399001':
-        send_wechat(analysis_info['date'] + "---->" + analysis_info['name'] + analysis_info['code']
-                    + "\n 收盘价: " + str(analysis_info['price'])
-                    + "   MA" + str(ma_min) + ": " + str(analysis_info['aprice-0'][0])
-                    + "   MA" + str(ma_max) + ": " + str(analysis_info['aprice-0'][1])
-                    + "\n 交易额: " + str(analysis_info['amo'])
-                    + "   MA" + str(ma_max) + ": " + str(analysis_info['aamo-0'][1])
-                    + "\n 价高于MA" + str(ma_min) + ": " + str(analysis_info['price'] >= analysis_info['aprice-0'][0])
-                    + " 价高于MA" + str(ma_max) + ": " + str(analysis_info['price'] >= analysis_info['aprice-0'][1])
-                    + "\n 额高于MA" + str(ma_min) + ": " + str(analysis_info['amo'] >= analysis_info['aamo-0'][0])
-                    + " 额高于MA" + str(ma_max) + ": " + str(analysis_info['amo'] >= analysis_info['aamo-0'][1])
-                    + "\n 成交价MA" + str(ma_max) + "趋势向上: " + str(analysis_info['aprice-0'][1] >= aa_price)
-                    + "\n 成交额MA" + str(ma_max) + "趋势向上: " + str(analysis_info['aamo-0'][1] >= aat_volume))
-    print("========================================================================================")
-    if (analysis_info['aamo-0'][1] >= aat_volume) & (analysis_info['aprice-0'][1] >= aa_price) \
-            & (analysis_info['amo'] >= analysis_info['aamo-0'][1]) & (
-            analysis_info['amo'] <= analysis_info['aamo-0'][0]) \
-            & (analysis_info['price'] >= analysis_info['aprice-0'][0]) & (analysis_info['aprice-0'][1] >= aa_price):
+    aa_volume = round((analysis_info['aamo-0'][1] + analysis_info['aamo-1'][1] + analysis_info['aamo-2'][1] +
+                       analysis_info['aamo-3'][1] + analysis_info['aamo-4'][1]) / 5, 2)
+    t_volume = round((analysis_info['amo'] + analysis_info['amo-1'] + analysis_info['amo-2'] + analysis_info['amo-3'] +
+                      analysis_info['amo-4']) / 5, 2)
+
+    if (t_volume > aa_volume) & (analysis_info['aamo-0'][1] >= aa_volume) & (
+            analysis_info['aamo-0'][1] > analysis_info['aamo-1'][1]):
         return analysis_info
+
+    # if (analysis_info['aamo-0'][1] >= aa_volume) \
+    #         & (analysis_info['aprice-0'][1] >= aa_price) \
+    #         & (analysis_info['amo'] >= analysis_info['aamo-0'][1]) \
+    #         & (analysis_info['amo'] <= analysis_info['aamo-0'][0]) \
+    #         & (analysis_info['price'] >= analysis_info['aprice-0'][0]) \
+    #         & (analysis_info['aprice-0'][1] >= aa_price):
+    #     return analysis_info

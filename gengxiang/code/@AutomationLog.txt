@@ -42,3 +42,7 @@
 2024-06-15 11:00:49.154 wxauto.py[261] SendClipboard -> Find Control Timeout(10s): {Name: '老公', ControlType: EditControl}
 2024-06-15 11:04:28.391 wxauto.py[261] SendClipboard -> Find Control Timeout(10s): {Name: 'G.X', ControlType: EditControl}
 2024-08-24 22:00:37.221 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2024-08-31 17:26:59.537 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2024-09-16 08:20:33.521 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2024-09-16 21:41:19.347 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2024-09-30 22:03:44.642 wxauto.py[261] SendClipboard -> Find Control Timeout(10s): {Name: 'G.X', ControlType: EditControl}

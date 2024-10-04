@@ -38,21 +38,31 @@ def send_wechat_tips(total_amo):
 
 
 def send_wechat_stock(stop_list, select_list):
-    msg = todayStr + "涨停个股信息："
+    if len(stop_list) > 2:
+        msg = "搞短线！！！ \n"
+
+    if len(stop_list) < 3:
+        msg = "弃短线！！！ \n"
+
+    msg = msg + todayStr + "涨停个股信息："
     for stop in stop_list:
-        info = get_mysql(stop['name'])
-        msg = msg + "\n" + str(stop['times']) + " - " + stop['code'] + ' : ' + stop['name'] + \
-              "\n " + info[2] + "\n " + info[4] + "\n =================="
+        info = get_mysql(stop['code'])
+        msg = msg + "\n" + str(stop['times']) + " - " + stop['code'] + ' : ' + stop['name']
+        if info is not None:
+            msg = msg + "\n " + info[2] + "\n " + info[4]
+        msg = msg + "\n =================="
     send_wechat(msg)
 
     if len(select_list) == 0:
         return
     msg2 = todayStr + "趋势个股信息："
     for select in select_list:
-        info = get_mysql(stop['name'])
+        info = get_mysql(select['code'])
         msg2 = msg2 + "\n" + str(select['times']) + " -> " + select['code'] + ' : ' + select[
-            'name'] + " , 最大跌幅：" + str(((select['max_prices'] - select['price']) / select['price']) * 100) + "%" \
-               + "\n " + info[2] + "\n " + info[4] + "\n =================="
+            'name'] + " , 最大跌幅：" + str(((select['max_prices'] - select['price']) / select['price']) * 100) + "%"
+        if info is not None:
+            msg2 = msg2 + "\n " + info[2] + "\n " + info[4]
+        msg2 = msg2 + "\n =================="
     send_wechat(msg2)
 
 

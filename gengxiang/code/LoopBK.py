@@ -4,8 +4,6 @@ import time
 from urllib import request
 
 import pymysql
-import requests
-from bs4 import BeautifulSoup
 
 all_BK = [
     {
@@ -725,17 +723,16 @@ def get_bk_file():
 # 今天日期
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
-
-headers = {
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-    'Cookie': 'Hm_lvt_78c58f01938e4d85eaf619eae71b4ed1=1677976181; v=AxPhgB2pczVhxD9hhxaTmhTRopw-yKeKYVzrvsUwbzJpRD0KTZg32nEsew_W',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
-}
-current_l = requests.get("http://q.10jqka.com.cn/thshy/index/field/199112/order/desc/page/2/ajax/1/", headers=headers)
-print(current_l.text)
-soup = BeautifulSoup(current_l.text, 'html.parser')
-print(soup)
-
-for tr in soup.findAll("tr"):
-    print(tr)
-    print(tr.find("th")[1])
+# headers = {
+#     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+#     'Cookie': 'Hm_lvt_78c58f01938e4d85eaf619eae71b4ed1=1677976181; v=AxPhgB2pczVhxD9hhxaTmhTRopw-yKeKYVzrvsUwbzJpRD0KTZg32nEsew_W',
+#     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
+# }
+# current_l = requests.get("http://q.10jqka.com.cn/thshy/index/field/199112/order/desc/page/2/ajax/1/", headers=headers)
+# print(current_l.text)
+# soup = BeautifulSoup(current_l.text, 'html.parser')
+# print(soup)
+#
+# for tr in soup.findAll("tr"):
+#     print(tr)
+#     print(tr.find("th")[1])

@@ -4541,4 +4541,5 @@ def timerRun():
     Timer(86400, timerRun).start()
 
 
-timerRun()
+timerRun(
+# AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
