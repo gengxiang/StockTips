@@ -47,10 +47,9 @@ def send_wechat_stock(stop_list, select_list):
     msg = msg + todayStr + "涨停个股信息："
     for stop in stop_list:
         info = get_mysql(stop['code'])
-        msg = msg + "\n" + str(stop['times']) + " - " + stop['code'] + ' : ' + stop['name']
+        msg = msg + "\n #" + str(stop['times']) + " - " + stop['code'] + ' : ' + stop['name']
         if info is not None:
             msg = msg + "\n " + info[2] + "\n " + info[4]
-        msg = msg + "\n =================="
     send_wechat(msg)
 
     if len(select_list) == 0:
@@ -58,11 +57,10 @@ def send_wechat_stock(stop_list, select_list):
     msg2 = todayStr + "趋势个股信息："
     for select in select_list:
         info = get_mysql(select['code'])
-        msg2 = msg2 + "\n" + str(select['times']) + " -> " + select['code'] + ' : ' + select[
+        msg2 = msg2 + "\n #" + str(select['times']) + " -> " + select['code'] + ' : ' + select[
             'name'] + " , 最大跌幅：" + str(((select['max_prices'] - select['price']) / select['price']) * 100) + "%"
         if info is not None:
             msg2 = msg2 + "\n " + info[2] + "\n " + info[4]
-        msg2 = msg2 + "\n =================="
     send_wechat(msg2)
 
 
@@ -72,7 +70,19 @@ def send_wechat_bk(select_list):
     wx.ChatWith(who)
     msg = todayStr + "板块信息："
     for stop in select_list:
-        msg = msg + "\n" + stop['code'] + ':' + stop['name'] + " ->" + str(stop['ahs'])
+        msg = msg + "\n #" + stop['code'] + ':' + stop['name'] + " ->" + str(stop['ahs'])
+    send_wechat(msg)
+    print("发送结束！")
+
+
+def send_wechat_ind(select_list, title):
+    if len(select_list) == 0:
+        return
+    wx.ChatWith(who)
+    msg = todayStr + " " + title
+    for stop in select_list:
+        msg = msg + "\n #" + stop['industry'] + " ->" + str(stop['stop_times']) + "\n  " + '>'.join(
+            [item for item in stop['stop_details']])
     send_wechat(msg)
     print("发送结束！")
 

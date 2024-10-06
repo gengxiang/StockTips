@@ -34,13 +34,23 @@ def get_analysis_info(basic_list, ma_min, ma_max):
     llen = len(basic_list)
     if llen < 5:
         return None
+    big_times = 0
     stop_times = 0
     max_prices = 0
-    for history in basic_list:
+    min_prices = basic_list[0]['price']
+
+    for i in range(0, llen):
+        # print(basic_list[i-1])
+        if basic_list[i]['amo'] != 0 & basic_list[i - 1]['amo'] != 0:
+            if (i > 0) & (basic_list[i]['amo'] / basic_list[i - 1]['amo'] > 1.5) & (basic_list[i]['amp'] > 0):
+                big_times += 1
+        history = basic_list[i]
         if history['stop_price'] == history['price'] or (history['stop_price'] <= 0.0 and history['amp'] > 9.8):
             stop_times = stop_times + 1
         if history['price'] > max_prices:
             max_prices = history['price']
+        if history['price'] < min_prices:
+            min_prices = history['price']
 
     # 价格、金额、换手的平均值 MA7，MA16
     # 最近5天 MA16平均价格、平均金额、平均换手
@@ -60,12 +70,46 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'date': basic_list[0]['date'],
         'code': basic_list[0]['code'],
         'name': basic_list[0]['name'],
-        'times': stop_times,
-        'max_prices': max_prices,
-        'today_stop': basic_list[0]['stop_price'] == basic_list[0]['price'],
-        'hs': basic_list[0]['hs'],
-        'ahs': max_avg0[2],
         'price': basic_list[0]['price'],
+        # 今日是否涨停
+        'today_stop': basic_list[0]['stop_price'] == basic_list[0]['price'],
+        # 区间涨停次数
+        'times': stop_times,
+        # 增量大于1.5
+        'amo_times': big_times,
+        # 16日平均换手
+        'ahs': max_avg0[2],
+        # 近5天 MA7 价格 成交额 换手
+        'MA7-0': [min_avg0[0], min_avg0[1], min_avg0[2]],
+        'MA7-1': [min_avg1[0], min_avg1[1], min_avg1[2]],
+        'MA7-2': [min_avg2[0], min_avg2[1], min_avg2[2]],
+        'MA7-3': [min_avg3[0], min_avg3[1], min_avg3[2]],
+        'MA7-4': [min_avg4[0], min_avg4[1], min_avg4[2]],
+        # 近5天 MA16 价格 成交额 换手
+        'MA16-0': [max_avg0[0], max_avg0[1], max_avg0[2]],
+        'MA16-1': [max_avg1[0], max_avg1[1], max_avg1[2]],
+        'MA16-2': [max_avg2[0], max_avg2[1], max_avg2[2]],
+        'MA16-3': [max_avg3[0], max_avg3[1], max_avg3[2]],
+        'MA16-4': [max_avg4[0], max_avg4[1], max_avg4[2]],
+        # 近5天  价格 成交额 换手
+        'price_arr': [basic_list[0]['price'], basic_list[1]['price'], basic_list[2]['price'], basic_list[3]['price'],
+                      basic_list[4]['price']],
+        'amo_arr': [basic_list[0]['amo'], basic_list[1]['amo'], basic_list[2]['amo'], basic_list[3]['amo'],
+                    basic_list[4]['amo']],
+        'hs_arr': [basic_list[0]['hs'], basic_list[1]['hs'], basic_list[2]['hs'], basic_list[3]['hs'],
+                   basic_list[4]['hs']],
+        'max_prices': max_prices,
+        'min_prices': min_prices,
+        # 最高价与当前价涨跌幅
+        'amp': round((max_prices - basic_list[0]['price']) / max_prices, 2),
+        # 总市值
+        'mc': basic_list[0]['mc'],
+        # 市盈率
+        'per': basic_list[0]['per'],
+        # 市净率
+        'pb': basic_list[0]['pb'],
+        # 换手
+        'hs': basic_list[0]['hs'],
         # 近5日价格 MA7,, MA16
         'aprice-0': [min_avg0[0], max_avg0[0]],
         'aprice-1': [min_avg1[0], max_avg1[0]],
@@ -83,15 +127,7 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'amo-1': round(basic_list[1]['amo'] / 10000, 2),
         'amo-2': round(basic_list[2]['amo'] / 10000, 2),
         'amo-3': round(basic_list[3]['amo'] / 10000, 2),
-        'amo-4': round(basic_list[4]['amo'] / 10000, 2),
-        # 20日内涨跌幅
-        'amp': round((max_prices - basic_list[0]['price']) / max_prices, 2),
-        # 总市值
-        'mc': basic_list[0]['mc'],
-        # 市盈率
-        'per': basic_list[0]['per'],
-        # 市净率
-        'pb': basic_list[0]['pb']
+        'amo-4': round(basic_list[4]['amo'] / 10000, 2)
     }
     return analysis_info
 
@@ -115,7 +151,9 @@ def analysis(analysis_info, ma_min, ma_max):
         # 未涨停
         elif analysis_info['times'] < 1 or analysis_info['amp'] > 0.25:
             return
-        # 市净率
+        elif analysis_info['amo_times'] < 1:
+            return
+            # 市净率
         elif analysis_info['per'] < 0 or analysis_info['per'] > 100:
             return
         # 平均换手率小于1.5 或大于8 ,平均成交额小于5000w, ma_min < ma_max
@@ -131,14 +169,14 @@ def analysis(analysis_info, ma_min, ma_max):
     t_volume = round((analysis_info['amo'] + analysis_info['amo-1'] + analysis_info['amo-2'] + analysis_info['amo-3'] +
                       analysis_info['amo-4']) / 5, 2)
 
-    if (t_volume > aa_volume) & (analysis_info['aamo-0'][1] >= aa_volume) & (
-            analysis_info['aamo-0'][1] > analysis_info['aamo-1'][1]):
-        return analysis_info
-
-    # if (analysis_info['aamo-0'][1] >= aa_volume) \
-    #         & (analysis_info['aprice-0'][1] >= aa_price) \
-    #         & (analysis_info['amo'] >= analysis_info['aamo-0'][1]) \
-    #         & (analysis_info['amo'] <= analysis_info['aamo-0'][0]) \
-    #         & (analysis_info['price'] >= analysis_info['aprice-0'][0]) \
-    #         & (analysis_info['aprice-0'][1] >= aa_price):
+    # if (t_volume > aa_volume) & (analysis_info['aamo-0'][1] >= aa_volume) & (
+    #         analysis_info['aamo-0'][1] > analysis_info['aamo-1'][1]):
     #     return analysis_info
+
+    if (analysis_info['aamo-0'][1] >= aa_volume) \
+            & (analysis_info['aprice-0'][1] >= aa_price) \
+            & (analysis_info['amo'] >= analysis_info['aamo-0'][1]) \
+            & (analysis_info['amo'] <= analysis_info['aamo-0'][0]) \
+            & (analysis_info['price'] >= analysis_info['aprice-0'][0]) \
+            & (analysis_info['aprice-0'][1] >= aa_price):
+        return analysis_info

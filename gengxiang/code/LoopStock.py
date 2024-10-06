@@ -1,6 +1,5 @@
 import json
 import time
-from threading import Timer
 
 import AnalysisStock
 import GetSaveStock
@@ -4533,13 +4532,30 @@ def loop_stock():
     return stop_list, select_list
 
 
+def runInd():
+    current = GetSaveStock.get_second1_stop_mysql()
+    Wechat.send_wechat_ind(current, "30日涨停板块")
+    today = GetSaveStock.get_today_stop_mysql()
+    before = GetSaveStock.get_second2_stop_mysql()
+    set1 = {item['industry'] for item in today}
+    set2 = {item['industry'] for item in before}
+    difference = set1 - set2
+    news = []
+    for item in today:
+        if item['industry'] in difference:
+            news.append(item)
+    Wechat.send_wechat_ind(news, "当日新涨停板块")
+
+
 def timerRun():
     Wechat.send_wechat_tips(zs_dump_list(['sh000001', 'sz399001']))
     Wechat.send_wechat_bk(LoopBK.loop_bk())
     loop = loop_stock()
     Wechat.send_wechat_stock(loop[0], loop[1])
-    Timer(86400, timerRun).start()
+    runInd()
+    # Timer(86400, timerRun).start()
 
 
-timerRun(
-# AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
+timerRun()
+# # # AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
+# runInd()

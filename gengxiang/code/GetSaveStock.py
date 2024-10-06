@@ -174,6 +174,78 @@ def get_mysql(stock_code):
     return stock_list
 
 
+def get_stop_mysql():
+    stock_list = []
+    mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
+                            database='stock_tips', charset='utf8')
+    cursor = mysql.cursor()
+    sql = "SELECT a.top_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 30 DAY ) AND price = stop_price GROUP BY a.top_industry ORDER BY stop_times DESC"
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    for row in results:
+        stock = {
+            'industry': row[0],
+            'stop_times': row[1],
+            'stop_details': row[2].split(',')
+        }
+        stock_list.append(stock)
+    return stock_list
+
+
+def get_second1_stop_mysql():
+    stock_list = []
+    mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
+                            database='stock_tips', charset='utf8')
+    cursor = mysql.cursor()
+    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 30 DAY ) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    for row in results:
+        stock = {
+            'industry': row[0],
+            'stop_times': row[1],
+            'stop_details': row[2].split(',')
+        }
+        stock_list.append(stock)
+    return stock_list
+
+
+def get_second2_stop_mysql():
+    stock_list = []
+    mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
+                            database='stock_tips', charset='utf8')
+    cursor = mysql.cursor()
+    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 30 DAY ) and date <= (select DISTINCT date from stock_data_detail GROUP BY date order by date desc LIMIT 1, 1) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    for row in results:
+        stock = {
+            'industry': row[0],
+            'stop_times': row[1],
+            'stop_details': row[2].split(',')
+        }
+        stock_list.append(stock)
+    return stock_list
+
+
+def get_today_stop_mysql():
+    stock_list = []
+    mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
+                            database='stock_tips', charset='utf8')
+    cursor = mysql.cursor()
+    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date = (select DISTINCT date from stock_data_detail GROUP BY date order by date desc LIMIT 0, 1) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    for row in results:
+        stock = {
+            'industry': row[0],
+            'stop_times': row[1],
+            'stop_details': row[2].split(',')
+        }
+        stock_list.append(stock)
+    return stock_list
+
+
 # http获取当前行情信息
 def get_current_batch(stock_codes, write_file):
     stocks = []
@@ -212,4 +284,5 @@ def get_current_batch(stock_codes, write_file):
                 }
                 stocks.append(stock)
     return stocks
+
 
