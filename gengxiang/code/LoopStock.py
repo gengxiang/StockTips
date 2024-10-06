@@ -4558,6 +4558,7 @@ def timerRun():
     loop = loop_stock()
     Wechat.send_wechat_stock(loop[0], loop[1])
     runInd()
+    runRank()
     # Timer(86400, timerRun).start()
 
 
