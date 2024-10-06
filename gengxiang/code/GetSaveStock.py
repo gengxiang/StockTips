@@ -246,6 +246,27 @@ def get_today_stop_mysql():
     return stock_list
 
 
+def get_stop_rank_mysql():
+    stock_list = []
+    mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
+                            database='stock_tips', charset='utf8')
+    cursor = mysql.cursor()
+    sql = "SELECT a.CODE, a.stock_name, a.industry, a.address, a.concept, count( b.date ) AS stop_times FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code`  WHERE date > (select DISTINCT date from stock_data_detail GROUP BY date order by date desc LIMIT 15, 1)  AND price = stop_price GROUP BY b.CODE ORDER BY stop_times DESC"
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    for row in results:
+        stock = {
+            'code': row[0],
+            'name': row[1],
+            'industry': row[2],
+            'address': row[3],
+            'times': row[5],
+            'concept': row[4].split(';')
+        }
+        stock_list.append(stock)
+    return stock_list
+
+
 # http获取当前行情信息
 def get_current_batch(stock_codes, write_file):
     stocks = []

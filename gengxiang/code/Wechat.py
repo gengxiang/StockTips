@@ -86,6 +86,27 @@ def send_wechat_ind(select_list, title):
     send_wechat(msg)
     print("发送结束！")
 
+
+def send_wechat_rank(select):
+    if len(select) == 0:
+        return
+    wx.ChatWith(who)
+    msg = todayStr + " 今日涨停榜"
+    for stop in select:
+        msg = msg + "\n#" + stop['name'] + " -> " + str(stop['times']) + "\n || " + stop[
+            'industry'] + "\n || " + '*'.join(
+            [item for item in stop['concept']])
+    send_wechat(msg)
+    print("发送结束！")
+
+# stock = {
+#     'code': row[0],
+#     'name': row[1],
+#     'industry': row[2],
+#     'address': row[3],
+#     'times': row[5],
+#     'concept': row[4].split(',')
+# }
 # stock_list = []
 # ak = {
 #     'code': 'sh600187',

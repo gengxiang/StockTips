@@ -4547,6 +4547,11 @@ def runInd():
     Wechat.send_wechat_ind(news, "当日新涨停板块")
 
 
+def runRank():
+    current = GetSaveStock.get_stop_rank_mysql()
+    Wechat.send_wechat_rank(current)
+
+
 def timerRun():
     Wechat.send_wechat_tips(zs_dump_list(['sh000001', 'sz399001']))
     Wechat.send_wechat_bk(LoopBK.loop_bk())
@@ -4556,6 +4561,6 @@ def timerRun():
     # Timer(86400, timerRun).start()
 
 
-timerRun()
+# timerRun()
 # # # AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
-# runInd()
+runRank()
