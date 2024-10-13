@@ -47,9 +47,9 @@ def send_wechat_stock(stop_list, select_list):
     msg = msg + todayStr + "涨停个股信息："
     for stop in stop_list:
         info = get_mysql(stop['code'])
-        msg = msg + "\n #" + str(stop['times']) + " - " + stop['code'] + ' : ' + stop['name']
+        msg = msg + "\n " + str(stop['times']) + " - " + stop['code'] + ' : #' + stop['name']
         if info is not None:
-            msg = msg + "\n " + info[2] + "\n " + info[4]
+            msg = msg + "\n " + info[4]
     send_wechat(msg)
 
     if len(select_list) == 0:
@@ -70,7 +70,7 @@ def send_wechat_bk(select_list):
     wx.ChatWith(who)
     msg = todayStr + "板块信息："
     for stop in select_list:
-        msg = msg + "\n #" + stop['code'] + ':' + stop['name'] + " ->" + str(stop['ahs'])
+        msg = msg + "\n " + stop['code'] + ':#' + stop['name'] + " ->" + str(stop['ahs'])
     send_wechat(msg)
     print("发送结束！")
 
@@ -80,9 +80,15 @@ def send_wechat_ind(select_list, title):
         return
     wx.ChatWith(who)
     msg = todayStr + " " + title
+    i = 0
     for stop in select_list:
-        msg = msg + "\n #" + stop['industry'] + " ->" + str(stop['stop_times']) + "\n  " + '>'.join(
+        msg = msg + "\n" + stop['industry'] + " ->" + str(stop['stop_times']) + "\n  #" + ',#'.join(
             [item for item in stop['stop_details']])
+        i += 1
+        if i < 9 and i % 8 == 0:
+            send_wechat(msg)
+            msg = todayStr + " " + title
+
     send_wechat(msg)
     print("发送结束！")
 
@@ -92,10 +98,16 @@ def send_wechat_rank(select):
         return
     wx.ChatWith(who)
     msg = todayStr + " 今日涨停榜"
+    i = 0
     for stop in select:
         msg = msg + "\n#" + stop['name'] + " -> " + str(stop['times']) + "\n || " + stop[
             'industry'] + "\n || " + '*'.join(
             [item for item in stop['concept']])
+        i += 1
+        if i < 28 and i % 9 == 0:
+            send_wechat(msg)
+            msg = todayStr + " 今日涨停榜"
+
     send_wechat(msg)
     print("发送结束！")
 

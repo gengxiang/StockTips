@@ -4534,7 +4534,7 @@ def loop_stock():
 
 def runInd():
     current = GetSaveStock.get_second1_stop_mysql()
-    Wechat.send_wechat_ind(current, "30日涨停板块")
+    Wechat.send_wechat_ind(current, "近30日涨停板块排行")
     today = GetSaveStock.get_today_stop_mysql()
     before = GetSaveStock.get_second2_stop_mysql()
     set1 = {item['industry'] for item in today}
@@ -4544,7 +4544,7 @@ def runInd():
     for item in today:
         if item['industry'] in difference:
             news.append(item)
-    Wechat.send_wechat_ind(news, "当日新涨停板块")
+    Wechat.send_wechat_ind(news, "当日新鲜涨停板块")
 
 
 def runRank():
@@ -4558,10 +4558,10 @@ def timerRun():
     loop = loop_stock()
     Wechat.send_wechat_stock(loop[0], loop[1])
     runInd()
-    runRank()
+    # runRank()
     # Timer(86400, timerRun).start()
 
 
-# timerRun()
-# # # AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
-runRank()
+timerRun()
+# AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
+# runRank()

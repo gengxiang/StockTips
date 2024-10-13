@@ -95,7 +95,9 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'price_arr': [basic_list[0]['price'], basic_list[1]['price'], basic_list[2]['price'], basic_list[3]['price'],
                       basic_list[4]['price']],
         'amo_arr': [basic_list[0]['amo'], basic_list[1]['amo'], basic_list[2]['amo'], basic_list[3]['amo'],
-                    basic_list[4]['amo']],
+                    basic_list[4]['amo'],
+                    basic_list[5]['amo'], basic_list[6]['amo'], basic_list[7]['amo'], basic_list[8]['amo'],
+                    basic_list[9]['amo']],
         'hs_arr': [basic_list[0]['hs'], basic_list[1]['hs'], basic_list[2]['hs'], basic_list[3]['hs'],
                    basic_list[4]['hs']],
         'max_prices': max_prices,
@@ -143,6 +145,7 @@ def analysis(analysis_info, ma_min, ma_max):
     if analysis_info is None:
         return
 
+    print(analysis_info)
     if analysis_info['code'] != 'sh000001' and analysis_info['code'] != 'sz399001':
         # 非ST 非银行 非地产
         if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '证券' in analysis_info[
@@ -153,7 +156,7 @@ def analysis(analysis_info, ma_min, ma_max):
             return
         elif analysis_info['amo_times'] < 1:
             return
-            # 市净率
+        # 市净率
         elif analysis_info['per'] < 0 or analysis_info['per'] > 100:
             return
         # 平均换手率小于1.5 或大于8 ,平均成交额小于5000w, ma_min < ma_max
@@ -161,22 +164,15 @@ def analysis(analysis_info, ma_min, ma_max):
                 analysis_info['aprice-0'][0] < analysis_info['aprice-0'][1]:
             return
 
-    aa_price = round((analysis_info['aprice-0'][1] + analysis_info['aprice-1'][1] + analysis_info['aprice-2'][1] +
-                      analysis_info['aprice-3'][1] + analysis_info['aprice-4'][1]) / 5, 2)
-
-    aa_volume = round((analysis_info['aamo-0'][1] + analysis_info['aamo-1'][1] + analysis_info['aamo-2'][1] +
-                       analysis_info['aamo-3'][1] + analysis_info['aamo-4'][1]) / 5, 2)
-    t_volume = round((analysis_info['amo'] + analysis_info['amo-1'] + analysis_info['amo-2'] + analysis_info['amo-3'] +
-                      analysis_info['amo-4']) / 5, 2)
-
     # if (t_volume > aa_volume) & (analysis_info['aamo-0'][1] >= aa_volume) & (
     #         analysis_info['aamo-0'][1] > analysis_info['aamo-1'][1]):
     #     return analysis_info
-
-    if (analysis_info['aamo-0'][1] >= aa_volume) \
-            & (analysis_info['aprice-0'][1] >= aa_price) \
-            & (analysis_info['amo'] >= analysis_info['aamo-0'][1]) \
-            & (analysis_info['amo'] <= analysis_info['aamo-0'][0]) \
-            & (analysis_info['price'] >= analysis_info['aprice-0'][0]) \
-            & (analysis_info['aprice-0'][1] >= aa_price):
+    # 当日成交额MA7大于5天前的1.5倍
+    ma7 = analysis_info['MA7-0'][2] / analysis_info['MA7-4'][2] > 1.5
+    # 近三天amo平均值 与前两天amo的比率
+    amo = (3 * (analysis_info['amo_arr'][0] + analysis_info['amo_arr'][1] + analysis_info['amo_arr'][3]) / 2 * (
+            analysis_info['amo_arr'][4] + analysis_info['amo_arr'][5])) > 1.5
+    price = analysis_info['price_arr'][0] > analysis_info['MA16-0'][1] & analysis_info['MA7-0'][0] > \
+            analysis_info['MA7-0'][4]
+    if ma7 & amo & price:
         return analysis_info
