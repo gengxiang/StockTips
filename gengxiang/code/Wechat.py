@@ -104,7 +104,7 @@ def send_wechat_rank(select):
             'industry'] + "\n || " + '*'.join(
             [item for item in stop['concept']])
         i += 1
-        if i < 28 and i % 9 == 0:
+        if i < 10 and i % 9 == 0:
             send_wechat(msg)
             msg = todayStr + " ½ñÈÕÕÇÍ£°ñ"
 
