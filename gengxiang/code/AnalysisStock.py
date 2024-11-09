@@ -140,6 +140,8 @@ def analysis_stop_time(analysis_info):
     if analysis_info['today_stop'] and analysis_info['times'] > 1:
         return analysis_info
 
+// 近日有涨停，当天倍量，阳线，ma5小于10 %，ma16向上
+
 
 def analysis(analysis_info, ma_min, ma_max):
     if analysis_info is None:
@@ -152,7 +154,7 @@ def analysis(analysis_info, ma_min, ma_max):
             'name'] or '地产' in analysis_info['name']:
             return
         # 未涨停
-        elif analysis_info['times'] < 1 or analysis_info['amp'] > 0.25:
+        elif analysis_info['times'] < 1:
             return
         elif analysis_info['amo_times'] < 1:
             return

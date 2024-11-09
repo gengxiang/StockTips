@@ -85,7 +85,7 @@ def send_wechat_ind(select_list, title):
         msg = msg + "\n" + stop['industry'] + " ->" + str(stop['stop_times']) + "\n  #" + ',#'.join(
             [item for item in stop['stop_details']])
         i += 1
-        if i < 9 and i % 8 == 0:
+        if i < 5 and i % 8 == 0:
             send_wechat(msg)
             msg = todayStr + " " + title
 

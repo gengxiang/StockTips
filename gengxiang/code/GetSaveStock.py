@@ -197,7 +197,7 @@ def get_second1_stop_mysql():
     mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
-    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 15 DAY ) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
+    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 4 DAY ) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
     cursor.execute(sql)
     results = cursor.fetchall()
     for row in results:
