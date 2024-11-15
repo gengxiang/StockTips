@@ -57,8 +57,7 @@ def send_wechat_stock(stop_list, select_list):
     msg2 = todayStr + "趋势个股信息："
     for select in select_list:
         info = get_mysql(select['code'])
-        msg2 = msg2 + "\n #" + str(select['times']) + " -> " + select['code'] + ' : ' + select[
-            'name'] + " , 最大跌幅：" + str(((select['max_prices'] - select['price']) / select['price']) * 100) + "%"
+        msg2 = msg2 + "\n " + str(select['times']) + " -> " + select['code'] + ' : #' + select['name']
         if info is not None:
             msg2 = msg2 + "\n " + info[2] + "\n " + info[4]
     send_wechat(msg2)
@@ -104,7 +103,7 @@ def send_wechat_rank(select):
             'industry'] + "\n || " + '*'.join(
             [item for item in stop['concept']])
         i += 1
-        if i < 10 and i % 9 == 0:
+        if i < 5 and i % 9 == 0:
             send_wechat(msg)
             msg = todayStr + " 今日涨停榜"
 

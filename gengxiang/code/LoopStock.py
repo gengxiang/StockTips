@@ -4544,7 +4544,7 @@ def runInd():
         if item['industry'] in difference:
             news.append(item)
     Wechat.send_wechat_ind(news, "当日新鲜涨停板块")
-    Wechat.send_wechat_ind(current, "近日涨停板块排行")
+    Wechat.send_wechat_ind(current, "近4日涨停板块排行")
 
 
 def runRank():
@@ -4554,12 +4554,11 @@ def runRank():
 
 def timerRun():
     Wechat.send_wechat_tips(zs_dump_list(['sh000001', 'sz399001']))
-    Wechat.send_wechat_bk(LoopBK.loop_bk())
+    LoopBK.loop_bk()
     loop = loop_stock()
     Wechat.send_wechat_stock(loop[0], loop[1])
     runInd()
     runRank()
-    # Timer(86400, timerRun).start()
 
 
 timerRun()
