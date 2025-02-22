@@ -25,7 +25,7 @@ def send_wechat(msg):
     # wx.SendMsg(msg, who)
 
 
-def send_wechat_tips(total_amo):
+def send_wechat_tips(total_amo, review_url):
     if 70000000 > total_amo:
         msg = todayStr + "\n" + "两市成交额：" + str(total_amo / 10000) + "亿\n" + "有内鬼！停止交易！"
         send_wechat(msg)
@@ -35,6 +35,25 @@ def send_wechat_tips(total_amo):
     if 75000000 < total_amo:
         msg = todayStr + "\n" + "两市成交额：" + str(total_amo / 10000) + "亿\n" + "他来了!抓紧机会！"
         send_wechat(msg)
+
+    focus = "近5日焦点复盘地址：\n"
+    i = 0
+    for review in review_url:
+        i += 1
+        if i < 5:
+            focus = focus + review + " \n"
+    send_wechat(focus)
+
+
+def send_wechat_jrj(jrj):
+    msg = str(jrj['td']) + " 大盘云图："
+    for jr in jrj['hqs']:
+        ## + " - 上涨家数:" + jr['bsp']['unum'] + " - 下跌家数:" + jr['bsp']['dnum']
+        # " - 总成交额:" + str(round(jr['esp']['amt'] / 100000000, 2)) + "亿" + \
+        msg = msg + "\n #" + jr['name'] + \
+              " - 净流入:" + str(round(float(jr['rval']) / 100000000, 2)) + "亿"
+    wx.ChatWith(who)
+    send_wechat(msg)
 
 
 def send_wechat_stock(stop_list, select_list):
@@ -84,12 +103,16 @@ def send_wechat_ind(select_list, title):
         msg = msg + "\n" + stop['industry'] + " ->" + str(stop['stop_times']) + "\n  #" + ',#'.join(
             [item for item in stop['stop_details']])
         i += 1
-        if i < 5 and i % 8 == 0:
-            send_wechat(msg)
-            msg = todayStr + " " + title
+        if stop['stop_times'] < 4:
+            break
+        if i >= 8:
+            break
+        # if i < 5 and i % 8 == 0:
+        #     send_wechat(msg)
+        #     msg = todayStr + " " + title
 
     send_wechat(msg)
-    print("发送结束！")
+    print(title + "发送结束！")
 
 
 def send_wechat_rank(select):
@@ -99,13 +122,14 @@ def send_wechat_rank(select):
     msg = todayStr + " 今日涨停榜"
     i = 0
     for stop in select:
-        msg = msg + "\n#" + stop['name'] + " -> " + str(stop['times']) + "\n || " + stop[
-            'industry'] + "\n || " + '*'.join(
-            [item for item in stop['concept']])
+        if stop['times'] < 3:
+            break
+        msg = msg + "\n#" + stop['name'] + " -> " + str(stop['times']) + "\n || " + stop['industry']
+        # + "\n || " + '*'.join([item for item in stop['concept']])
         i += 1
-        if i < 5 and i % 9 == 0:
-            send_wechat(msg)
-            msg = todayStr + " 今日涨停榜"
+        # if i < 5 and i % 9 == 0:
+        #     send_wechat(msg)
+        #     msg = todayStr + " 今日涨停榜"
 
     send_wechat(msg)
     print("发送结束！")

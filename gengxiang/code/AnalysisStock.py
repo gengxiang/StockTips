@@ -74,6 +74,8 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'code': basic_list[0]['code'],
         'name': basic_list[0]['name'],
         'price': basic_list[0]['price'],
+        'stop_price': basic_list[0]['stop_price'],
+        'b_stop_price': round(basic_list[0]['stop_price'] * 0.9 / 1.1, 2),
         # 今日是否涨停
         'today_stop': basic_list[0]['stop_price'] == basic_list[0]['price'],
         # 今日是否倍量
@@ -153,7 +155,6 @@ def analysis(analysis_info, ma_min, ma_max):
     if analysis_info is None:
         return
 
-    # print(analysis_info)
     if analysis_info['code'] != 'sh000001' and analysis_info['code'] != 'sz399001':
         # 非ST 非银行 非地产
         if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '证券' in analysis_info[
