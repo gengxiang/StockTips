@@ -4,7 +4,7 @@ import pymysql
 
 
 def save_mysql(stock_info):
-    print(stock_info)
+    # print(stock_info)
     if 'ËùÊô¸ÅÄî' not in stock_info:
         stock_info['ËùÊô¸ÅÄî'] = "-"
 

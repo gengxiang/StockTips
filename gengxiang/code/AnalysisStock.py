@@ -42,15 +42,13 @@ def get_analysis_info(basic_list, ma_min, ma_max):
     limit_stop_times = 0
 
     for i in range(0, llen):
-        if basic_list[i - 1]['code'] == "sh600117":
-            print(basic_list[i - 1])
         if basic_list[i]['stop_price'] != basic_list[i]['price']:
             break
         else:
             limit_stop_times += 1
 
     for i in range(0, llen):
-        print(basic_list[i - 1])
+        # print(basic_list[i - 1])
         if basic_list[i]['amo'] != 0 and basic_list[i - 1]['amo'] != 0:
             if (i > 0) and (basic_list[i - 1]['amo'] / basic_list[i]['amo'] > 1.5) and (basic_list[i]['amp'] > 0):
                 big_times += 1
