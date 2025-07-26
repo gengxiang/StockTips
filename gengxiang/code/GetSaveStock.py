@@ -198,7 +198,8 @@ def get_second1_stop_mysql():
     mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
-    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 4 DAY ) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
+    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details " \
+          "FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 2 DAY ) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
     cursor.execute(sql)
     results = cursor.fetchall()
     for row in results:
@@ -275,11 +276,11 @@ def get_current_batch(stock_codes, write_file):
 
     stocks = []
     try:
-        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
+        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=5.0).read().decode('gbk')
     except:
         print("请求异常等待………………")
         time.sleep(5)
-        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
+        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=5.0).read().decode('gbk')
 
     if write_file:
         with open("..\data\\" + todayStr + ".txt", "a") as file:
@@ -293,6 +294,9 @@ def get_current_batch(stock_codes, write_file):
                 current_arr = str(currents[ccs]).split('~')
                 if current_arr[39] == '':
                     current_arr[39] = 0
+                if current_arr[38] == '':
+                    continue
+
                 stock = {
                     'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
                     'name': current_arr[1],  # 名称

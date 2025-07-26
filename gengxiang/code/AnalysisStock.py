@@ -39,9 +39,18 @@ def get_analysis_info(basic_list, ma_min, ma_max):
     stop_times = 0
     max_prices = 0
     min_prices = basic_list[0]['price']
+    limit_stop_times = 0
 
     for i in range(0, llen):
-        # print(basic_list[i-1])
+        if basic_list[i - 1]['code'] == "sh600117":
+            print(basic_list[i - 1])
+        if basic_list[i]['stop_price'] != basic_list[i]['price']:
+            break
+        else:
+            limit_stop_times += 1
+
+    for i in range(0, llen):
+        print(basic_list[i - 1])
         if basic_list[i]['amo'] != 0 and basic_list[i - 1]['amo'] != 0:
             if (i > 0) and (basic_list[i - 1]['amo'] / basic_list[i]['amo'] > 1.5) and (basic_list[i]['amp'] > 0):
                 big_times += 1
@@ -82,6 +91,8 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'today_big': today_big,
         # 区间涨停次数
         'times': stop_times,
+        # 连续涨停次数
+        'limit_times': limit_stop_times,
         # 增量大于1.5
         'amo_times': big_times,
         # 16日平均换手

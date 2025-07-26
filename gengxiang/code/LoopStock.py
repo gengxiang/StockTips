@@ -3157,7 +3157,7 @@ all_stock_code = [
     'sz002519',
     'sz300045',
     'sz300101',
-    'sz300114',
+    # 'sz300114',
     'sz300123',
     'sz300177',
     'sz300252',
@@ -4413,6 +4413,22 @@ todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
 def zs_dump_list(stock_code_list):
+    total_amo = 0
+    yesterday_amo = 0
+    today_list = GetSaveStock.get_current_batch(stock_code_list, False)
+    for num in range(0, len(stock_code_list)):
+        stock_code = stock_code_list[num]
+        stock_today = [today_list[num]]
+        GetSaveStock.save_mysql(stock_today)
+        history_list = GetSaveStock.get_mysql(stock_code)
+        print("历史列表：--->", history_list[1])
+        yesterday_amo += history_list[1]['amo']
+        total_amo += today_list[num]['amo']
+
+    return total_amo, yesterday_amo
+
+
+def zs_dump(stock_code_list):
     selects = []
     total_amo = 0
 
@@ -4512,7 +4528,7 @@ def loop_stock():
     stop_list = []
     stop_num = []
     l_num = 0
-    page_size = 50
+    page_size = 90
     with open("..\\result\\" + todayStr + ".txt", "w") as file:
         file.write("")
     while l_num < len(all_stock_code):
@@ -4554,7 +4570,7 @@ def runInd():
         if item['industry'] in difference:
             news.append(item)
     Wechat.send_wechat_ind(news, "当日新鲜涨停板块")
-    Wechat.send_wechat_ind(current, "近4日涨停板块排行")
+    Wechat.send_wechat_ind(current, "近2日涨停板块排行")
 
 
 def runRank():
