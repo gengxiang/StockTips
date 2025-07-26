@@ -79,8 +79,9 @@ def send_wechat_stock(stop_list, select_list):
     msg = msg + todayStr + "涨停个股信息："
     for stop in stop_list:
         info = get_mysql(stop['code'])
-        msg = msg + "\n " + str(stop['times']) + " - " + stop['code'] + ' [ ' + stop['limit_times'] + ' ] : #' + stop[
-            'name']
+        msg = msg + "\n " + str(stop['times']) + " - " + stop['code'] + ' [ ' + str(stop['limit_times']) + ' ] : #' + \
+              stop[
+                  'name']
         if info is not None:
             msg = msg + "\n " + info[4]
     send_wechat(msg)

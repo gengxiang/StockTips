@@ -4540,7 +4540,7 @@ def loop_stock():
     stop_list.sort(key=lambda k: (k.get('times', 0)), reverse=True)
     if len(stop_list) > 10:
         stop_list = stop_list[:10]
-        if stop_list[0]['times'] > 3:
+        if stop_list[0]['times'] >= 3:
             stop_list = list(filter(lambda o: o['times'] > 3., stop_list))
     print("趋势分析满足要求的数量：--->", len(stop_list), "+++++", len(select_list))
     with open("..\\result\\" + todayStr + ".txt", "a") as file:
