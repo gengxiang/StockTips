@@ -2,6 +2,7 @@ import json
 import time
 
 import AnalysisStock
+import FocusReview
 import GetSaveStock
 import LoopBK
 from gengxiang.code import Wechat
@@ -3156,7 +3157,7 @@ all_stock_code = [
     'sz002519',
     'sz300045',
     'sz300101',
-    'sz300114',
+    # 'sz300114',
     'sz300123',
     'sz300177',
     'sz300252',
@@ -4412,6 +4413,22 @@ todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
 def zs_dump_list(stock_code_list):
+    total_amo = 0
+    yesterday_amo = 0
+    today_list = GetSaveStock.get_current_batch(stock_code_list, False)
+    for num in range(0, len(stock_code_list)):
+        stock_code = stock_code_list[num]
+        stock_today = [today_list[num]]
+        GetSaveStock.save_mysql(stock_today)
+        history_list = GetSaveStock.get_mysql(stock_code)
+        print("历史列表：--->", history_list[1])
+        yesterday_amo += history_list[1]['amo']
+        total_amo += today_list[num]['amo']
+
+    return total_amo, yesterday_amo
+
+
+def zs_dump(stock_code_list):
     selects = []
     total_amo = 0
 
@@ -4427,6 +4444,8 @@ def zs_dump_list(stock_code_list):
 def full_dump_list(stock_code_list, run_mysql, w_file):
     selects = []
     stops = []
+    # stop_num = 0
+    # b_stop_num = 0
     if w_file:
         GetSaveStock.get_current_batch(stock_code_list, True)
         return selects
@@ -4443,8 +4462,13 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
             # GetSaveStock.save_excel(history_list, excel_file_name)
         # history_list = GetSaveStock.get_excel(excel_file_name)
         if len(history_list) >= 20:
-            nn = AnalysisStock.analysis(AnalysisStock.get_analysis_info(history_list, 7, 16), 7, 16)
-            mm = AnalysisStock.analysis_stop_time(AnalysisStock.get_analysis_info(history_list, 7, 16))
+            info = AnalysisStock.get_analysis_info(history_list, 7, 16)
+            # if info['stop_price'] == info['price']:
+            #     stop_num = stop_num + 1
+            # if info['b_stop_num'] == info['price']:
+            #     b_stop_num = b_stop_num + 1
+            nn = AnalysisStock.analysis(info, 7, 16)
+            mm = AnalysisStock.analysis_stop_time(info)
             if nn is not None:
                 selects.append(nn)
             if mm is not None:
@@ -4481,6 +4505,7 @@ def get_stock_file():
                 'code': current_arr[0][2:10],  # 编码
                 'price': float(current_arr[3]),  # 收盘价格
                 'stop_price': float(current_arr[47]),  # 涨停价格
+                'b_stop_price': float(current_arr[48]),  # 涨停价格
                 'amo': int(float(current_arr[37])),  # 成交额（万元）
                 'amp': float(current_arr[32]),  # 涨跌幅%
                 'qrr': float(current_arr[49]),  # 量比
@@ -4501,8 +4526,9 @@ run_with_mysql = True
 def loop_stock():
     select_list = []
     stop_list = []
+    stop_num = []
     l_num = 0
-    page_size = 50
+    page_size = 90
     with open("..\\result\\" + todayStr + ".txt", "w") as file:
         file.write("")
     while l_num < len(all_stock_code):
@@ -4514,7 +4540,7 @@ def loop_stock():
     stop_list.sort(key=lambda k: (k.get('times', 0)), reverse=True)
     if len(stop_list) > 10:
         stop_list = stop_list[:10]
-        if stop_list[0]['times'] > 3:
+        if stop_list[0]['times'] >= 3:
             stop_list = list(filter(lambda o: o['times'] > 3., stop_list))
     print("趋势分析满足要求的数量：--->", len(stop_list), "+++++", len(select_list))
     with open("..\\result\\" + todayStr + ".txt", "a") as file:
@@ -4523,18 +4549,17 @@ def loop_stock():
             print(stop)
             file.write(json.dumps(stop, ensure_ascii=False))
             file.write("\n")
-        file.write("满足趋势分析可买标的: \n")
-        for select in select_list:
-            print(select)
-            file.write(json.dumps(select, ensure_ascii=False))
-            file.write("\n")
+        # file.write("满足趋势分析可买标的: \n")
+        # for select in select_list:
+        #     print(select)
+        #     file.write(json.dumps(select, ensure_ascii=False))
+        #     file.write("\n")
     # full_dump_list(['sh000001', 'sz399001'], run_with_mysql, False)
     return stop_list, select_list
 
 
 def runInd():
     current = GetSaveStock.get_second1_stop_mysql()
-    Wechat.send_wechat_ind(current, "30日涨停板块")
     today = GetSaveStock.get_today_stop_mysql()
     before = GetSaveStock.get_second2_stop_mysql()
     set1 = {item['industry'] for item in today}
@@ -4544,18 +4569,25 @@ def runInd():
     for item in today:
         if item['industry'] in difference:
             news.append(item)
-    Wechat.send_wechat_ind(news, "当日新涨停板块")
+    Wechat.send_wechat_ind(news, "当日新鲜涨停板块")
+    Wechat.send_wechat_ind(current, "近2日涨停板块排行")
+
+
+def runRank():
+    current = GetSaveStock.get_stop_rank_mysql()
+    Wechat.send_wechat_rank(current)
 
 
 def timerRun():
-    Wechat.send_wechat_tips(zs_dump_list(['sh000001', 'sz399001']))
-    Wechat.send_wechat_bk(LoopBK.loop_bk())
+    Wechat.send_wechat_tips(zs_dump_list(['sh000001', 'sz399001']), FocusReview.get_focus_review())
+    LoopBK.loop_bk()
     loop = loop_stock()
     Wechat.send_wechat_stock(loop[0], loop[1])
     runInd()
-    # Timer(86400, timerRun).start()
+    Wechat.send_wechat_jrj(FocusReview.get_jrj_view())
+    # runRank()
 
 
 timerRun()
-# # # AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
-# runInd()
+# AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
+# runRank()

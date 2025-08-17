@@ -129,17 +129,17 @@ def save_mysql(stock_list):
         cursor.execute(sql)
         results = cursor.fetchall()
         if len(results) == 0:
-            sql = "INSERT INTO stock_data_detail(code, name, date, price, stop_price, amo, amp, qrr, mc, hs, per, pb)" \
-                  "VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s)" % \
+            sql = "INSERT INTO stock_data_detail(code, name, date, price, stop_price, b_stop_price, amo, amp, qrr, mc, hs, per, pb)" \
+                  "VALUES ('%s', '%s', '%s', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)" % \
                   (stock_info['code'], stock_info['name'], stock_info['date'], stock_info['price'],
-                   stock_info['stop_price'],
+                   stock_info['stop_price'], stock_info['b_stop_price'],
                    stock_info['amo'], stock_info['amp'], stock_info['qrr'], stock_info['mc'], stock_info['hs'],
                    stock_info['per'], stock_info['pb'])
             cursor.execute(sql)
         else:
-            sql = "UPDATE stock_data_detail SET price = %s, amo= %s, amp= %s, qrr = %s, mc = %s, hs = %s, per = %s, pb = %s " \
+            sql = "UPDATE stock_data_detail SET price = %s, amo= %s,b_stop_price= %s, amp= %s, qrr = %s, mc = %s, hs = %s, per = %s, pb = %s " \
                   "WHERE code = '%s' and date = '%s'" % \
-                  (stock_info['price'], stock_info['amo'], stock_info['amp'],
+                  (stock_info['price'], stock_info['amo'], stock_info['b_stop_price'], stock_info['amp'],
                    stock_info['qrr'], stock_info['mc'],
                    stock_info['hs'], stock_info['per'], stock_info['pb'], stock_info['code'], stock_info['date'])
             cursor.execute(sql)
@@ -161,14 +161,15 @@ def get_mysql(stock_code):
             'name': row[2],
             'code': row[1],
             'price': row[4],
-            'stop_price': row[5],  # 涨停价
-            'amo': row[7],  # 成交额（万元）
-            'amp': row[6],  # 涨跌幅%
-            'qrr': row[9],  # 量比
-            'mc': row[8],  # 总市值
-            'hs': row[10],  # 换手率
-            'per': row[11],  # 市盈率
-            'pb': row[12],  # 市净率
+            'b_stop_price': row[5],  # 跌涨停价
+            'stop_price': row[6],  # 涨停价
+            'amo': row[8],  # 成交额（万元）
+            'amp': row[7],  # 涨跌幅%
+            'qrr': row[10],  # 量比
+            'mc': row[9],  # 总市值
+            'hs': row[11],  # 换手率
+            'per': row[12],  # 市盈率
+            'pb': row[13],  # 市净率
         }
         stock_list.append(stock)
     return stock_list
@@ -197,7 +198,8 @@ def get_second1_stop_mysql():
     mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
-    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 30 DAY ) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
+    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details " \
+          "FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 2 DAY ) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
     cursor.execute(sql)
     results = cursor.fetchall()
     for row in results:
@@ -215,7 +217,7 @@ def get_second2_stop_mysql():
     mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
-    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 30 DAY ) and date <= (select DISTINCT date from stock_data_detail GROUP BY date order by date desc LIMIT 1, 1) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
+    sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 15 DAY ) and date <= (select DISTINCT date from stock_data_detail GROUP BY date order by date desc LIMIT 1, 1) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
     cursor.execute(sql)
     results = cursor.fetchall()
     for row in results:
@@ -246,15 +248,39 @@ def get_today_stop_mysql():
     return stock_list
 
 
+def get_stop_rank_mysql():
+    stock_list = []
+    mysql = pymysql.connect(host='127.0.0.1', port=3366, user='root', password='gengxiang',
+                            database='stock_tips', charset='utf8')
+    cursor = mysql.cursor()
+    sql = "SELECT a.CODE, a.stock_name, a.industry, a.address, a.concept, count( b.date ) AS stop_times FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code`  WHERE date > (select DISTINCT date from stock_data_detail GROUP BY date order by date desc LIMIT 8, 1)  AND price = stop_price GROUP BY b.CODE ORDER BY stop_times DESC"
+    cursor.execute(sql)
+    results = cursor.fetchall()
+    for row in results:
+        stock = {
+            'code': row[0],
+            'name': row[1],
+            'industry': row[2],
+            'address': row[3],
+            'times': row[5],
+            'concept': row[4].split(';')
+        }
+        stock_list.append(stock)
+    return stock_list
+
+
 # http获取当前行情信息
 def get_current_batch(stock_codes, write_file):
+    # current_stree = request.urlopen('https://gateway.jrj.com/quot-feed/category_hqs', timeout=1.0).read().decode('gbk')
+    # print(current_stree)
+
     stocks = []
     try:
-        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
+        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=5.0).read().decode('gbk')
     except:
         print("请求异常等待………………")
         time.sleep(5)
-        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=1.0).read().decode('gbk')
+        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=5.0).read().decode('gbk')
 
     if write_file:
         with open("..\data\\" + todayStr + ".txt", "a") as file:
@@ -268,12 +294,16 @@ def get_current_batch(stock_codes, write_file):
                 current_arr = str(currents[ccs]).split('~')
                 if current_arr[39] == '':
                     current_arr[39] = 0
+                if current_arr[38] == '':
+                    continue
+
                 stock = {
                     'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
                     'name': current_arr[1],  # 名称
                     'code': stock_codes[ccs],  # 编码
                     'price': float(current_arr[3]),  # 收盘价格
                     'stop_price': float(current_arr[47]),  # 涨停价格
+                    'b_stop_price': float(current_arr[48]),  # 跌停价格
                     'amo': int(float(current_arr[37])),  # 成交额（万元）
                     'amp': float(current_arr[32]),  # 涨跌幅%
                     'qrr': float(current_arr[49]),  # 量比
@@ -285,4 +315,4 @@ def get_current_batch(stock_codes, write_file):
                 stocks.append(stock)
     return stocks
 
-
+# current_str = request.urlopen('https://gateway.jrj.com/quot-feed/category_hqs', timeout=1.0).read().decode('gbk')

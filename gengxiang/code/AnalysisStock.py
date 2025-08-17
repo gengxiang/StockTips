@@ -35,15 +35,25 @@ def get_analysis_info(basic_list, ma_min, ma_max):
     if llen < 5:
         return None
     big_times = 0
+    today_big = False
     stop_times = 0
     max_prices = 0
     min_prices = basic_list[0]['price']
+    limit_stop_times = 0
 
     for i in range(0, llen):
-        # print(basic_list[i-1])
-        if basic_list[i]['amo'] != 0 & basic_list[i - 1]['amo'] != 0:
-            if (i > 0) & (basic_list[i]['amo'] / basic_list[i - 1]['amo'] > 1.5) & (basic_list[i]['amp'] > 0):
+        if basic_list[i]['stop_price'] != basic_list[i]['price']:
+            break
+        else:
+            limit_stop_times += 1
+
+    for i in range(0, llen):
+        # print(basic_list[i - 1])
+        if basic_list[i]['amo'] != 0 and basic_list[i - 1]['amo'] != 0:
+            if (i > 0) and (basic_list[i - 1]['amo'] / basic_list[i]['amo'] > 1.5) and (basic_list[i]['amp'] > 0):
                 big_times += 1
+                if i <= 1:
+                    today_big = True
         history = basic_list[i]
         if history['stop_price'] == history['price'] or (history['stop_price'] <= 0.0 and history['amp'] > 9.8):
             stop_times = stop_times + 1
@@ -71,10 +81,16 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'code': basic_list[0]['code'],
         'name': basic_list[0]['name'],
         'price': basic_list[0]['price'],
+        'stop_price': basic_list[0]['stop_price'],
+        'b_stop_price': round(basic_list[0]['stop_price'] * 0.9 / 1.1, 2),
         # 今日是否涨停
         'today_stop': basic_list[0]['stop_price'] == basic_list[0]['price'],
+        # 今日是否倍量
+        'today_big': today_big,
         # 区间涨停次数
         'times': stop_times,
+        # 连续涨停次数
+        'limit_times': limit_stop_times,
         # 增量大于1.5
         'amo_times': big_times,
         # 16日平均换手
@@ -95,13 +111,15 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'price_arr': [basic_list[0]['price'], basic_list[1]['price'], basic_list[2]['price'], basic_list[3]['price'],
                       basic_list[4]['price']],
         'amo_arr': [basic_list[0]['amo'], basic_list[1]['amo'], basic_list[2]['amo'], basic_list[3]['amo'],
-                    basic_list[4]['amo']],
+                    basic_list[4]['amo'],
+                    basic_list[5]['amo'], basic_list[6]['amo'], basic_list[7]['amo'], basic_list[8]['amo'],
+                    basic_list[9]['amo']],
         'hs_arr': [basic_list[0]['hs'], basic_list[1]['hs'], basic_list[2]['hs'], basic_list[3]['hs'],
                    basic_list[4]['hs']],
         'max_prices': max_prices,
         'min_prices': min_prices,
-        # 最高价与当前价涨跌幅
-        'amp': round((max_prices - basic_list[0]['price']) / max_prices, 2),
+        # 涨跌幅
+        'amp': basic_list[0]['amp'],
         # 总市值
         'mc': basic_list[0]['mc'],
         # 市盈率
@@ -139,6 +157,9 @@ def analysis_stop_time(analysis_info):
         return analysis_info
 
 
+# 近日有涨停，当天倍量，阳线，ma5小于10 %，ma16向上
+
+
 def analysis(analysis_info, ma_min, ma_max):
     if analysis_info is None:
         return
@@ -149,34 +170,33 @@ def analysis(analysis_info, ma_min, ma_max):
             'name'] or '地产' in analysis_info['name']:
             return
         # 未涨停
-        elif analysis_info['times'] < 1 or analysis_info['amp'] > 0.25:
+        elif analysis_info['times'] < 1 or analysis_info['amp'] < 0:
             return
-        elif analysis_info['amo_times'] < 1:
+        elif analysis_info['today_big'] is False:
             return
-            # 市净率
+        # 市净率
         elif analysis_info['per'] < 0 or analysis_info['per'] > 100:
             return
-        # 平均换手率小于1.5 或大于8 ,平均成交额小于5000w, ma_min < ma_max
-        elif analysis_info['ahs'] < 1.9 or analysis_info['hs'] > 8 or analysis_info['aamo-0'][1] < 0.5 or \
-                analysis_info['aprice-0'][0] < analysis_info['aprice-0'][1]:
+        # 平均换手率小于1.5 或大于8 ,平均成交额小于5000w
+        elif analysis_info['ahs'] < 1.5 or analysis_info['hs'] > 8 or analysis_info['aamo-0'][1] < 0.5:
             return
 
-    aa_price = round((analysis_info['aprice-0'][1] + analysis_info['aprice-1'][1] + analysis_info['aprice-2'][1] +
-                      analysis_info['aprice-3'][1] + analysis_info['aprice-4'][1]) / 5, 2)
+        elif analysis_info['price_arr'][0] > (analysis_info['MA16-0'][0] * 1.1) or analysis_info['price_arr'][0] < \
+                analysis_info['MA16-0'][0]:
+            return
 
-    aa_volume = round((analysis_info['aamo-0'][1] + analysis_info['aamo-1'][1] + analysis_info['aamo-2'][1] +
-                       analysis_info['aamo-3'][1] + analysis_info['aamo-4'][1]) / 5, 2)
-    t_volume = round((analysis_info['amo'] + analysis_info['amo-1'] + analysis_info['amo-2'] + analysis_info['amo-3'] +
-                      analysis_info['amo-4']) / 5, 2)
+        return analysis_info
 
     # if (t_volume > aa_volume) & (analysis_info['aamo-0'][1] >= aa_volume) & (
     #         analysis_info['aamo-0'][1] > analysis_info['aamo-1'][1]):
     #     return analysis_info
+    # 当日成交额MA7大于5天前的1.5倍
 
-    if (analysis_info['aamo-0'][1] >= aa_volume) \
-            & (analysis_info['aprice-0'][1] >= aa_price) \
-            & (analysis_info['amo'] >= analysis_info['aamo-0'][1]) \
-            & (analysis_info['amo'] <= analysis_info['aamo-0'][0]) \
-            & (analysis_info['price'] >= analysis_info['aprice-0'][0]) \
-            & (analysis_info['aprice-0'][1] >= aa_price):
-        return analysis_info
+    # ma7 = analysis_info['MA7-0'][2] / analysis_info['MA7-4'][2] > 1.5
+    # # 近三天amo平均值 与前两天amo的比率
+    # amo = (3 * (analysis_info['amo_arr'][0] + analysis_info['amo_arr'][1] + analysis_info['amo_arr'][3]) / 2 * (
+    #         analysis_info['amo_arr'][4] + analysis_info['amo_arr'][5])) > 1.5
+    # price = analysis_info['price_arr'][0] > analysis_info['MA16-0'][1] & analysis_info['MA7-0'][0] > \
+    #         analysis_info['MA7-0'][4]
+    # if ma7 & amo & price:
+    #     return analysis_info
