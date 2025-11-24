@@ -56,7 +56,7 @@ def calc_reasonable_position(total_amo):
     avg_amo_5 = total_amo[2]
     avg_amo_16 = total_amo[3]
     avg_amo_30 = total_amo[4]
-    max_position = 8
+    max_position = 10
 
     # 防止除零
     ratio_5 = today_amo / avg_amo_5 if avg_amo_5 > 0 else 1
@@ -64,7 +64,7 @@ def calc_reasonable_position(total_amo):
     ratio_30 = today_amo / avg_amo_30 if avg_amo_30 > 0 else 1
 
     # 仓位分布优化：加权平均
-    weighted_ratio = (0.5 * ratio_5 + 0.3 * ratio_16 + 0.2 * ratio_30)
+    weighted_ratio = (0.3 * ratio_5 + 0.3 * ratio_16 + 0.4 * ratio_30)
 
     # 分段提升灵敏度
     if today_amo > avg_amo_5 and today_amo > avg_amo_16 and today_amo > avg_amo_30:
