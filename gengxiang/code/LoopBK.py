@@ -658,13 +658,13 @@ def loop_bk():
         try:
             current_html = request.urlopen(
                 'http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&invt=2&fltt=2&fields=f60,f43,f47,f48,f50,f58,f168,f170&secid=' + str(
-                    bk['f13']) + '.' + bk['f12'], timeout=5.0).read()
+                    bk['f13']) + '.' + bk['f12'], timeout=8.0).read()
         except:
             print("«Î«Û“Ï≥£µ»¥˝°≠°≠°≠°≠°≠°≠")
             time.sleep(5)
             current_html = request.urlopen(
                 'http://push2.eastmoney.com/api/qt/stock/get?ut=fa5fd1943c7b386f172d6893dbfba10b&invt=2&fltt=2&fields=f60,f43,f47,f48,f50,f58,f168,f170&secid=' + str(
-                    bk['f13']) + '.' + bk['f12'], timeout=5.0).read()
+                    bk['f13']) + '.' + bk['f12'], timeout=9.0).read()
 
         current_str = json.loads(current_html.decode())['data']
         bk_stock = {

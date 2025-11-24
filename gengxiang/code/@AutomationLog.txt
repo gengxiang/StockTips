@@ -88,3 +88,24 @@
 2025-07-17 22:53:57.204 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
 2025-07-19 21:43:40.731 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
 2025-07-25 20:19:33.793 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-08-16 21:15:50.760 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-08-16 21:19:28.654 wxauto.py[261] SendClipboard -> Find Control Timeout(10s): {Name: 'G.X', ControlType: EditControl}
+2025-08-17 10:35:29.215 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-08-17 20:29:02.079 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-08-20 19:13:05.038 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-08-25 22:38:57.915 wxauto.py[261] SendClipboard -> Find Control Timeout(10s): {Name: 'G.X', ControlType: EditControl}
+2025-08-27 22:44:52.207 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-09-07 10:00:26.757 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-09-10 22:25:21.621 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-09-11 20:49:34.388 wxauto.py[261] SendClipboard -> Find Control Timeout(10s): {Name: 'G.X', ControlType: EditControl}
+2025-09-11 20:50:07.360 wxauto.py[261] SendClipboard -> Find Control Timeout(10s): {Name: 'G.X', ControlType: EditControl}
+2025-09-24 22:51:13.578 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-09-26 21:42:32.560 wxauto.py[190] roll_to -> Can not move cursor. ListControl's BoundingRectangle is (0,0,0,0)[0x0]. SearchProperties: {Name: '会话', ControlType: ListControl}
+2025-09-26 21:42:37.391 wxauto.py[190] roll_to -> Can not move cursor. ListControl's BoundingRectangle is (0,0,0,0)[0x0]. SearchProperties: {Name: '会话', ControlType: ListControl}
+2025-10-20 22:33:32.774 wxauto.py[190] roll_to -> Can not move cursor. ListControl's BoundingRectangle is (0,0,0,0)[0x0]. SearchProperties: {Name: '会话', ControlType: ListControl}
+2025-10-27 22:45:59.353 wxauto.py[190] roll_to -> Can not move cursor. ListControl's BoundingRectangle is (0,0,0,0)[0x0]. SearchProperties: {Name: '会话', ControlType: ListControl}
+2025-11-05 22:53:02.477 wxauto.py[177] Search -> Find Control Timeout(10s): {Name: '搜索', ControlType: EditControl}
+2025-11-11 23:07:03.571 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-11-11 23:11:41.755 wxauto.py[261] SendClipboard -> Find Control Timeout(10s): {Name: 'G.X', ControlType: EditControl}
+2025-11-20 22:05:20.799 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-11-24 23:46:57.106 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}

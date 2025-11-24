@@ -30,22 +30,12 @@ def send_wechat_tips(total_amo, review_url):
     cha_value2 = total_amo[1] - total_amo[0]
     if total_amo[0] >= total_amo[1]:
         msg = todayStr + "\n" + "两市成交额：" + str(total_amo[0] / 10000) + "亿\n" + "放量：" + str(
-            cha_value1 / 10000) + "亿\n" + "他来了!抓紧机会！"
+            cha_value1 / 10000) + "亿\n" + "最大仓位：" + str(calc_reasonable_position(total_amo)) + "层\n" + "他来了!抓紧机会！"
         send_wechat(msg)
     if total_amo[0] < total_amo[1]:
         msg = todayStr + "\n" + "两市成交额：" + str(total_amo[0] / 10000) + "亿\n" + "缩量量：" + str(
-            cha_value2 / 10000) + "亿\n" + "有内鬼！注意风险！"
+            cha_value2 / 10000) + "亿\n" + "最大仓位：" + str(calc_reasonable_position(total_amo)) + "层\n" + "有内鬼！注意风险！"
         send_wechat(msg)
-
-    # if 70000000 > total_amo:
-    #     msg = todayStr + "\n" + "两市成交额：" + str(total_amo / 10000) + "亿\n" + "有内鬼！停止交易！"
-    #     send_wechat(msg)
-    # if 70000000 <= total_amo <= 75000000:
-    #     msg = todayStr + "\n" + "两市成交额：" + str(total_amo / 10000) + "亿\n" + "风险解除! !准备出击！"
-    #     send_wechat(msg)
-    # if 75000000 < total_amo:
-    #     msg = todayStr + "\n" + "两市成交额：" + str(total_amo / 10000) + "亿\n" + "他来了!抓紧机会！"
-    #     send_wechat(msg)
 
     focus = "近5日焦点复盘地址：\n"
     i = 0
@@ -56,15 +46,54 @@ def send_wechat_tips(total_amo, review_url):
     send_wechat(focus)
 
 
+def calc_reasonable_position(total_amo):
+    """
+    优化仓位分布：结合今日成交额与各均值的比值，分段提升灵敏度
+    :param total_amo: [今日成交额, 昨日成交额, 5日均值, 16日均值, 30日均值]
+    :return: 仓位层数（int, 1~8）
+    """
+    today_amo = total_amo[0]
+    avg_amo_5 = total_amo[2]
+    avg_amo_16 = total_amo[3]
+    avg_amo_30 = total_amo[4]
+    max_position = 8
+
+    # 防止除零
+    ratio_5 = today_amo / avg_amo_5 if avg_amo_5 > 0 else 1
+    ratio_16 = today_amo / avg_amo_16 if avg_amo_16 > 0 else 1
+    ratio_30 = today_amo / avg_amo_30 if avg_amo_30 > 0 else 1
+
+    # 仓位分布优化：加权平均
+    weighted_ratio = (0.5 * ratio_5 + 0.3 * ratio_16 + 0.2 * ratio_30)
+
+    # 分段提升灵敏度
+    if today_amo > avg_amo_5 and today_amo > avg_amo_16 and today_amo > avg_amo_30:
+        position = max_position
+    elif weighted_ratio >= 1.2:
+        position = int(max_position * 0.8)
+    elif weighted_ratio >= 1.0:
+        position = int(max_position * 0.6)
+    elif weighted_ratio >= 0.8:
+        position = int(max_position * 0.4)
+    else:
+        position = int(max_position * 0.2)
+
+    # 限定仓位范围
+    position = max(1, min(max_position, position))
+    return position
+
+
 def send_wechat_jrj(jrj):
+    total_inflow = 0
     msg = str(jrj['td']) + " 大盘云图："
     for jr in jrj['hqs']:
-        ## + " - 上涨家数:" + jr['bsp']['unum'] + " - 下跌家数:" + jr['bsp']['dnum']
-        # " - 总成交额:" + str(round(jr['esp']['amt'] / 100000000, 2)) + "亿" + \
         if float(jr['rval']) < 1000000000:
             continue
+        total_inflow += float(jr['rval'])
         msg = msg + "\n #" + jr['name'] + \
               " - 净流入:" + str(round(float(jr['rval']) / 100000000, 2)) + "亿"
+    total_inflow_亿 = round(total_inflow / 100000000, 2)
+    msg = msg + "\n总净流入金额：" + str(total_inflow_亿) + "亿"
     wx.ChatWith(who)
     send_wechat(msg)
 
@@ -79,9 +108,9 @@ def send_wechat_stock(stop_list, select_list):
     msg = msg + todayStr + "涨停个股信息："
     for stop in stop_list:
         info = get_mysql(stop['code'])
-        msg = msg + "\n " + str(stop['times']) + " - " + stop['code'] + ' [ ' + str(stop['limit_times']) + ' ] : #' + \
-              stop[
-                  'name']
+        msg = msg + "\n " + " - " + stop['code'] + ' [ ' + str(stop['times']) + ' / ' + str(
+            stop['limit_times']) + ' ] : #' + \
+              stop['name']
         if info is not None:
             msg = msg + "\n " + info[4]
     send_wechat(msg)
@@ -115,8 +144,8 @@ def send_wechat_ind(select_list, title):
     msg = todayStr + " " + title
     i = 0
     for stop in select_list:
-        msg = msg + "\n" + stop['industry'] + " ->" + str(stop['stop_times']) + "\n  #" + ',#'.join(
-            [item for item in stop['stop_details']])
+        msg = msg + "\n" + stop['industry'] + " ->" + str(stop['stop_times']) \
+              + "\n  #" + ',#'.join([item for item in stop['stop_details']])
         i += 1
         if stop['stop_times'] < 4:
             break

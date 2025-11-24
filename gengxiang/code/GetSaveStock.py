@@ -199,7 +199,7 @@ def get_second1_stop_mysql():
                             database='stock_tips', charset='utf8')
     cursor = mysql.cursor()
     sql = "SELECT a.second_industry, count( b.date ) AS stop_times, GROUP_CONCAT( DISTINCT a.stock_name ) AS stop_details " \
-          "FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 2 DAY ) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
+          "FROM stock_info a RIGHT JOIN stock_data_detail b ON a.all_code = b.`code` WHERE date > DATE_SUB( CURRENT_DATE, INTERVAL 1 DAY ) AND price = stop_price GROUP BY a.second_industry ORDER BY stop_times DESC"
     cursor.execute(sql)
     results = cursor.fetchall()
     for row in results:
@@ -276,11 +276,13 @@ def get_current_batch(stock_codes, write_file):
 
     stocks = []
     try:
-        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=5.0).read().decode('gbk')
+        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes) + '&d=20250811',
+                                      timeout=5.0).read().decode('gbk')
     except:
         print("请求异常等待………………")
         time.sleep(5)
-        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes), timeout=5.0).read().decode('gbk')
+        current_str = request.urlopen('http://qt.gtimg.cn/q=' + ','.join(stock_codes) + '&d=20250811',
+                                      timeout=5.0).read().decode('gbk')
 
     if write_file:
         with open("..\data\\" + todayStr + ".txt", "a") as file:
@@ -306,6 +308,7 @@ def get_current_batch(stock_codes, write_file):
                     'b_stop_price': float(current_arr[48]),  # 跌停价格
                     'amo': int(float(current_arr[37])),  # 成交额（万元）
                     'amp': float(current_arr[32]),  # 涨跌幅%
+
                     'qrr': float(current_arr[49]),  # 量比
                     'hs': float(current_arr[38]),  # 换手率
                     'mc': float(current_arr[45]),  # 总市值
@@ -315,4 +318,47 @@ def get_current_batch(stock_codes, write_file):
                 stocks.append(stock)
     return stocks
 
+
+# http获取当前行情信息
+def get_current_batch_from_file():
+    toStr = "2025-08-13"
+    with open("..\data\\" + toStr + ".txt", "r", encoding='utf-8') as file:
+        while True:
+            line = file.readline()
+            if not line:
+                break
+            # print("写入文件->", line)
+            currents = line.split(';')
+            stocks = []
+            for ccs in range(0, len(currents)):
+                if '\n' != currents[ccs]:
+                    current_arr = str(currents[ccs]).split('~')
+                    if current_arr[39] == '':
+                        current_arr[39] = 0
+                    if current_arr[38] == '':
+                        continue
+
+                    stock = {
+                        'date': current_arr[30][0:4] + '-' + current_arr[30][4:6] + '-' + current_arr[30][6:8],  # 时间
+                        'name': current_arr[1],  # 名称
+                        'code': current_arr[0][2:10],  # 编码
+                        'price': float(current_arr[3]),  # 收盘价格
+                        'stop_price': float(current_arr[47]),  # 涨停价格
+                        'b_stop_price': float(current_arr[48]),  # 跌停价格
+                        'amo': int(float(current_arr[37])),  # 成交额（万元）
+                        'amp': float(current_arr[32]),  # 涨跌幅%
+
+                        'qrr': float(current_arr[49]),  # 量比
+                        'hs': float(current_arr[38]),  # 换手率
+                        'mc': float(current_arr[45]),  # 总市值
+                        'per': float(current_arr[39]),  # 市盈率
+                        'pb': float(current_arr[46]),  # 市净率
+                    }
+                    stocks.append(stock)
+            print("写入文件->", stocks)
+            save_mysql(stocks)
+
 # current_str = request.urlopen('https://gateway.jrj.com/quot-feed/category_hqs', timeout=1.0).read().decode('gbk')
+
+
+# get_second1_stop_mysql()

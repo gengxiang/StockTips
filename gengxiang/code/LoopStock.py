@@ -4,7 +4,6 @@ import time
 import AnalysisStock
 import FocusReview
 import GetSaveStock
-import LoopBK
 from gengxiang.code import Wechat
 
 all_stock_code = [
@@ -4415,17 +4414,29 @@ todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 def zs_dump_list(stock_code_list):
     total_amo = 0
     yesterday_amo = 0
+    total_amo_5 = 0
+    total_amo_16 = 0
+    total_amo_30 = 0
     today_list = GetSaveStock.get_current_batch(stock_code_list, False)
+
     for num in range(0, len(stock_code_list)):
         stock_code = stock_code_list[num]
         stock_today = [today_list[num]]
         GetSaveStock.save_mysql(stock_today)
         history_list = GetSaveStock.get_mysql(stock_code)
-        print("历史列表：--->", history_list[1])
+        for idx, item in enumerate(history_list):
+            amo = item.get('amo', 0)
+            if idx < 5:
+                total_amo_5 += amo
+            if idx < 16:
+                total_amo_16 += amo
+            if idx < 30:
+                total_amo_30 += amo
+        print("历史列表：--->", stock_today[0])
         yesterday_amo += history_list[1]['amo']
         total_amo += today_list[num]['amo']
 
-    return total_amo, yesterday_amo
+    return total_amo, yesterday_amo, total_amo_5 / 5, total_amo_16 / 16, total_amo_30 / 30
 
 
 def zs_dump(stock_code_list):
@@ -4570,7 +4581,7 @@ def runInd():
         if item['industry'] in difference:
             news.append(item)
     Wechat.send_wechat_ind(news, "当日新鲜涨停板块")
-    Wechat.send_wechat_ind(current, "近2日涨停板块排行")
+    Wechat.send_wechat_ind(current, "当日涨停板块排行")
 
 
 def runRank():
@@ -4580,14 +4591,15 @@ def runRank():
 
 def timerRun():
     Wechat.send_wechat_tips(zs_dump_list(['sh000001', 'sz399001']), FocusReview.get_focus_review())
-    LoopBK.loop_bk()
+    # # LoopBK.loop_bk()
     loop = loop_stock()
     Wechat.send_wechat_stock(loop[0], loop[1])
-    runInd()
     Wechat.send_wechat_jrj(FocusReview.get_jrj_view())
     # runRank()
 
 
+# runInd()
 timerRun()
 # AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
 # runRank()
+# zs_dump_list(['sh000001', 'sz399001'])
