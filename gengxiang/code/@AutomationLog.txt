@@ -109,3 +109,4 @@
 2025-11-11 23:11:41.755 wxauto.py[261] SendClipboard -> Find Control Timeout(10s): {Name: 'G.X', ControlType: EditControl}
 2025-11-20 22:05:20.799 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
 2025-11-24 23:46:57.106 wxauto.py[185] ChatWith -> Find Control Timeout(10s): {ClassName: 'WeChatMainWndForPC', ControlType: WindowControl}
+2025-11-25 00:21:23.630 wxauto.py[190] roll_to -> Can not move cursor. ListControl's BoundingRectangle is (0,0,0,0)[0x0]. SearchProperties: {Name: '会话', ControlType: ListControl}

@@ -30,11 +30,11 @@ def send_wechat_tips(total_amo, review_url):
     cha_value2 = total_amo[1] - total_amo[0]
     if total_amo[0] >= total_amo[1]:
         msg = todayStr + "\n" + "两市成交额：" + str(total_amo[0] / 10000) + "亿\n" + "放量：" + str(
-            cha_value1 / 10000) + "亿\n" + "最大仓位：" + str(calc_reasonable_position(total_amo)) + "层\n" + "他来了!抓紧机会！"
+            cha_value1 / 10000) + "亿\n" + "最大仓位：" + str(calc_reasonable_position(total_amo)) + "%\n" + "他来了!抓紧机会！"
         send_wechat(msg)
     if total_amo[0] < total_amo[1]:
         msg = todayStr + "\n" + "两市成交额：" + str(total_amo[0] / 10000) + "亿\n" + "缩量量：" + str(
-            cha_value2 / 10000) + "亿\n" + "最大仓位：" + str(calc_reasonable_position(total_amo)) + "层\n" + "有内鬼！注意风险！"
+            cha_value2 / 10000) + "亿\n" + "最大仓位：" + str(calc_reasonable_position(total_amo)) + "%\n" + "有内鬼！注意风险！"
         send_wechat(msg)
 
     focus = "近5日焦点复盘地址：\n"
@@ -52,35 +52,103 @@ def calc_reasonable_position(total_amo):
     :param total_amo: [今日成交额, 昨日成交额, 5日均值, 16日均值, 30日均值]
     :return: 仓位层数（int, 1~8）
     """
-    today_amo = total_amo[0]
-    avg_amo_5 = total_amo[2]
-    avg_amo_16 = total_amo[3]
-    avg_amo_30 = total_amo[4]
-    max_position = 10
 
-    # 防止除零
-    ratio_5 = today_amo / avg_amo_5 if avg_amo_5 > 0 else 1
-    ratio_16 = today_amo / avg_amo_16 if avg_amo_16 > 0 else 1
-    ratio_30 = today_amo / avg_amo_30 if avg_amo_30 > 0 else 1
+    return volume_based_position_analysis(total_amo[0], total_amo[1], total_amo[2], total_amo[3], total_amo[4])
 
-    # 仓位分布优化：加权平均
-    weighted_ratio = (0.3 * ratio_5 + 0.3 * ratio_16 + 0.4 * ratio_30)
+    # today_amo = total_amo[0]
+    # avg_amo_5 = total_amo[2]
+    # avg_amo_16 = total_amo[3]
+    # avg_amo_30 = total_amo[4]
+    # max_position = 10
+    #
+    # # 防止除零
+    # ratio_5 = today_amo / avg_amo_5 if avg_amo_5 > 0 else 1
+    # ratio_16 = today_amo / avg_amo_16 if avg_amo_16 > 0 else 1
+    # ratio_30 = today_amo / avg_amo_30 if avg_amo_30 > 0 else 1
+    #
+    # # 仓位分布优化：加权平均
+    # weighted_ratio = (0.3 * ratio_5 + 0.3 * ratio_16 + 0.4 * ratio_30)
+    #
+    # # 分段提升灵敏度
+    # if today_amo > avg_amo_5 and today_amo > avg_amo_16 and today_amo > avg_amo_30:
+    #     position = max_position
+    # elif weighted_ratio >= 1.2:
+    #     position = int(max_position * 0.8)
+    # elif weighted_ratio >= 1.0:
+    #     position = int(max_position * 0.6)
+    # elif weighted_ratio >= 0.8:
+    #     position = int(max_position * 0.4)
+    # else:
+    #     position = int(max_position * 0.2)
+    #
+    # # 限定仓位范围
+    # position = max(1, min(max_position, position))
+    # return position
 
-    # 分段提升灵敏度
-    if today_amo > avg_amo_5 and today_amo > avg_amo_16 and today_amo > avg_amo_30:
-        position = max_position
-    elif weighted_ratio >= 1.2:
-        position = int(max_position * 0.8)
-    elif weighted_ratio >= 1.0:
-        position = int(max_position * 0.6)
-    elif weighted_ratio >= 0.8:
-        position = int(max_position * 0.4)
+
+def volume_based_position_analysis(today_volume, yesterday_volume, ma5, ma16, ma30):
+    """
+    完整的仓位分析算法
+    """
+    # 1. 数据验证
+    if any(v <= 0 for v in [today_volume, yesterday_volume, ma5, ma16, ma30]):
+        return {"error": "输入数据必须大于0"}
+
+    # 2. 计算各维度评分
+    # 短期动能
+    day_growth = (today_volume - yesterday_volume) / yesterday_volume
+    vs_ma5_ratio = today_volume / ma5
+    short_term_score = min(100, max(0, 50 + (day_growth * 200) + ((vs_ma5_ratio - 1) * 150)))
+
+    # 中期趋势
+    ma_trend = 0
+    if ma5 > ma16 > ma30:
+        ma_trend = 1
+    elif ma5 < ma16 < ma30:
+        ma_trend = -1
+
+    volume_strength = (today_volume / ma30 - 1) * 100
+    mid_term_score = min(100, max(0, 50 + (ma_trend * 20) + min(30, max(-30, volume_strength))))
+
+    # 市场热度
+    health_ratio = (ma5 / ma16 + ma16 / ma30) / 2
+    heat_score = min(100, max(0, 50 + ((health_ratio - 1) * 100) + ((today_volume / ma16 - 1) * 50)))
+
+    # 3. 综合评分
+    total_score = (short_term_score * 0.35 + mid_term_score * 0.40 + heat_score * 0.25)
+
+    # 4. 仓位建议
+    if total_score >= 80:
+        position_level, position_percent = "重仓", 80 + (total_score - 80) / 20 * 20
+    elif total_score >= 60:
+        position_level, position_percent = "中高仓", 60 + (total_score - 60) / 20 * 20
+    elif total_score >= 40:
+        position_level, position_percent = "中等仓", 40 + (total_score - 40) / 20 * 20
+    elif total_score >= 20:
+        position_level, position_percent = "轻仓", 20 + (total_score - 20) / 20 * 20
     else:
-        position = int(max_position * 0.2)
+        position_level, position_percent = "空仓", total_score / 20 * 20
 
-    # 限定仓位范围
-    position = max(1, min(max_position, position))
-    return position
+    position_percent = round(min(100, max(0, position_percent)), 1)
+
+    dot = {
+        "综合评分": round(total_score, 1),
+        "仓位建议": position_level,
+        "建议仓位比例": f"{position_percent}%",
+        "维度分析": {
+            "短期动能": round(short_term_score, 1),
+            "中期趋势": round(mid_term_score, 1),
+            "市场热度": round(heat_score, 1)
+        },
+        "关键指标": {
+            "日增长率": f"{day_growth:.2%}",
+            "相对于5日均值": f"{(vs_ma5_ratio - 1):.2%}",
+            "相对于30日均值": f"{(today_volume / ma30 - 1):.2%}",
+            "均线排列": "多头" if ma_trend == 1 else "空头" if ma_trend == -1 else "震荡"
+        }
+    }
+    print(dot)
+    return position_percent
 
 
 def send_wechat_jrj(jrj):
