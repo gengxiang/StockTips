@@ -4,7 +4,7 @@ import time
 import AnalysisStock
 import FocusReview
 import GetSaveStock
-from gengxiang.code import Wechat
+from gengxiang.code import Wechat, LoopBK, thsBK
 
 all_stock_code = [
     'sh601899',
@@ -4591,7 +4591,8 @@ def runRank():
 
 def timerRun():
     Wechat.send_wechat_tips(zs_dump_list(['sh000001', 'sz399001']), FocusReview.get_focus_review())
-    # # LoopBK.loop_bk()
+    Wechat.send_wechat_thsbks(thsBK.fetch_and_parse_bk_list())
+    Wechat.send_wechat_bks(LoopBK.fetch_and_parse_bk_list())
     loop = loop_stock()
     Wechat.send_wechat_stock(loop[0], loop[1])
     Wechat.send_wechat_jrj(FocusReview.get_jrj_view())
@@ -4599,7 +4600,8 @@ def timerRun():
 
 
 # runInd()
-timerRun()
 # AnalysisStock.analysis(AnalysisStock.get_analysis_info(GetSaveStock.get_mysql('sz300686'), 7, 16), 7, 16)
 # runRank()
 # zs_dump_list(['sh000001', 'sz399001'])
+# Wechat.send_wechat_thsbks(thsBK.fetch_and_parse_bk_list())
+timerRun()

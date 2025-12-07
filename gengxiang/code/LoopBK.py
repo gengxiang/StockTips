@@ -1,6 +1,7 @@
 # coding=gbk
 import json
 import time
+import urllib
 from urllib import request
 
 import pymysql
@@ -524,6 +525,26 @@ all_BK = [
     }
 ]
 
+# 非题材类板块代码集合（按属性分类标注）
+non_theme_plate_codes = {
+    # 市场交易/资金通道类
+    "BK0596", "BK0707", "BK0804", "BK1107", "BK1108",
+    # 指数/外资指数关联类
+    "BK0701", "BK0867", "BK0879", "BK0612", "BK0611", "BK0821",
+    "BK0500", "BK0610", "BK0705", "BK0568", "BK0743", "BK0742",
+    "BK0638", "BK0999", "BK1000",
+    # 资金持股/机构属性类
+    "BK0552", "BK0718", "BK0535", "BK0536", "BK0520", "BK0823",
+    # 股价/股权/交易走势类
+    "BK1059", "BK1053", "BK1112", "BK1158", "BK0498", "BK0499",
+    "BK0636", "BK0511", "BK0501", "BK0971", "BK0528", "BK0816",
+    "BK1051", "BK0817", "BK0815", "BK1050",
+    # 地域属性类
+    "BK0590", "BK0594", "BK0838", "BK0549", "BK0566", "BK0684",
+    "BK0534", "BK0926", "BK0677", "BK0643", "BK1193", "BK0813",
+    "BK0524", "BK0514", "BK0697", "BK0683", "BK0525", "BK1194"
+}
+
 
 def get_mysql(block_code):
     b_k_list = []
@@ -727,19 +748,82 @@ def get_bk_file():
             line = file.readline()
 
 
-# 今天日期
-todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
+def fetch_and_parse_bk_list():
+    headers = {
+        "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "accept-language": "zh-CN,zh;q=0.9",
+        "cache-control": "max-age=0",
+        "sec-ch-ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
+        "sec-ch-ua-mobile": "?1",
+        "sec-ch-ua-platform": "\"Android\"",
+        "sec-fetch-dest": "document",
+        "sec-fetch-mode": "navigate",
+        "sec-fetch-site": "none",
+        "sec-fetch-user": "?1",
+        "upgrade-insecure-requests": "1",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
+    }
+    # 1. 获取所有板块列表 https://data.eastmoney.com/bkzj/hy.html
+    url = "http://push2.eastmoney.com/api/qt/clist/get?cb=jQuery112308176510448004067_1764860382533&fid=f62&po=1&pz=100&pn=1&np=1&fltt=2&invt=2&ut=8dec03ba335b81bf4ebdf7b29ec27d15&fs=m%3A90+t%3A3&fields=f12%2Cf14%2Cf2%2Cf3%2Cf62%2Cf184%2Cf66%2Cf69%2Cf72%2Cf75%2Cf78%2Cf81%2Cf84%2Cf87%2Cf204%2Cf205%2Cf124%2Cf1%2Cf13"
+    req = urllib.request.Request(url, headers=headers)
+    response = urllib.request.urlopen(req, timeout=105)
+    raw = response.read().decode('utf-8')
+    json_str = raw[raw.find('(') + 1: raw.rfind(')')]
+    data = json.loads(json_str)
+    bk_list = data['data']['diff']
 
-# headers = {
-#     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-#     'Cookie': 'Hm_lvt_78c58f01938e4d85eaf619eae71b4ed1=1677976181; v=AxPhgB2pczVhxD9hhxaTmhTRopw-yKeKYVzrvsUwbzJpRD0KTZg32nEsew_W',
-#     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/110.0.0.0 Safari/537.36'
-# }
-# current_l = requests.get("http://q.10jqka.com.cn/thshy/index/field/199112/order/desc/page/2/ajax/1/", headers=headers)
-# print(current_l.text)
-# soup = BeautifulSoup(current_l.text, 'html.parser')
-# print(soup)
-#
-# for tr in soup.findAll("tr"):
-#     print(tr)
-#     print(tr.find("th")[1])
+    filtered_bk = [bk for bk in bk_list if
+                   (bk.get('f66', 0) > 1000000000) and (bk.get('f12') not in non_theme_plate_codes)]
+    filtered_bk = sorted(filtered_bk, key=lambda x: x['f66'], reverse=True)
+    stock_dict = {}
+
+    for idx, bk in enumerate(filtered_bk[:10], start=1):
+        bk_code = bk.get('f12')
+        bk_name = bk.get('f14')
+        bk_net_inflow = bk.get('f66', 0) + bk.get('f72', 0)
+        # bk_info = f"{bk_name}({bk_net_inflow})"
+        bk_info = f"{bk_name}[{idx}]"
+        # 构造请求URL，替换BK1090为当前板块code https://data.eastmoney.com/bkzj/BK1090.html
+        stock_url = f"http://push2.eastmoney.com/api/qt/clist/get?cb=jQuery112302720680570794537_1764861100324&fid=f62&po=1&pz=20&pn=1&np=1&fltt=2&invt=2&ut=8dec03ba335b81bf4ebdf7b29ec27d15&fs=b%3A{bk_code}&fields=f12%2Cf14%2Cf2%2Cf3%2Cf62%2Cf184%2Cf66%2Cf69%2Cf72%2Cf75%2Cf78%2Cf81%2Cf84%2Cf87%2Cf204%2Cf205%2Cf124%2Cf1%2Cf13"
+        try:
+            stock_req = urllib.request.Request(stock_url, headers=headers)
+            stock_resp = urllib.request.urlopen(stock_req, timeout=105)
+            stock_raw = stock_resp.read().decode('utf-8')
+            stock_json_str = stock_raw[stock_raw.find('(') + 1: stock_raw.rfind(')')]
+            stock_data = json.loads(stock_json_str)
+            stock_list = stock_data['data']['diff']
+        except Exception as e:
+            print(f"板块 {bk_code} {bk_name} 请求失败: {e}")
+            continue
+
+        filtered_bst = [bst for bst in stock_list if bst.get('f3', 0) > 8]
+        for stock in filtered_bst[:10]:
+            code = stock.get('f12')
+            if code in stock_dict:
+                stock_dict[code]['板块列表'].append(bk_info)
+            else:
+                stock_dict[code] = {
+                    'code': code,
+                    'name': stock.get('f14'),
+                    # '最新价': stock.get('f2'),
+                    '涨跌幅': stock.get('f3'),
+                    # '成交额': stock.get('f62'),
+                    '主力净流入': stock.get('f184'),
+                    # '涨速': stock.get('f66'),
+                    # '换手率': stock.get('f169'),
+                    '板块列表': [bk_info]
+                }
+
+    stock_values = list(stock_dict.values())
+    result = sorted(stock_values, key=lambda x: x['主力净流入'], reverse=True)
+
+    # 输出去重后的股票列表，板块信息格式：板块(板块净流入),板块(板块净流入)
+    for stock in result:
+        # stock['板块'] = ",".join(stock['板块列表'])
+        print(stock)
+    return result
+
+# 调用函数
+# fetch_and_parse_bk_list()
+# 今天日期
+# todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))

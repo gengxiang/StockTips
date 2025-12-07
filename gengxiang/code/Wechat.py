@@ -25,6 +25,29 @@ def send_wechat(msg):
     # wx.SendMsg(msg, who)
 
 
+def send_wechat_thsbks(thsBsk_list):
+    if len(thsBsk_list) == 0:
+        return
+    wx.ChatWith(who)
+    msg = todayStr + "板块信息："
+    for bsk in thsBsk_list:
+        msg = msg + "\n " + '#' + bsk['行业名称'] + "  +>领涨股: '#'" + str(
+            bsk['领涨股']) + " ->净流入资金(亿): " + str(bsk['净流入资金(亿)'])
+    send_wechat(msg)
+    print("发送结束！")
+
+
+def send_wechat_bks(bsk_list):
+    if len(bsk_list) == 0:
+        return
+    wx.ChatWith(who)
+    msg = todayStr + "板块信息："
+    for bsk in bsk_list:
+        msg = msg + "\n " + '#' + bsk['name'] + " ->" + str(bsk['板块列表'])
+    send_wechat(msg)
+    print("发送结束！")
+
+
 def send_wechat_tips(total_amo, review_url):
     cha_value1 = total_amo[0] - total_amo[1]
     cha_value2 = total_amo[1] - total_amo[0]
