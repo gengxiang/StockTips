@@ -1,5 +1,6 @@
 # coding=gbk
 import json
+import re
 import time
 import urllib
 from urllib import request
@@ -773,11 +774,12 @@ def fetch_and_parse_bk_list():
     bk_list = data['data']['diff']
 
     filtered_bk = [bk for bk in bk_list if
-                   (bk.get('f66', 0) > 1000000000) and (bk.get('f12') not in non_theme_plate_codes)]
+                   re.match(r'^-?\d+$', str(bk.get('f66', ''))) and
+                   int(bk.get('f66')) > 1000000000 and (bk.get('f12') not in non_theme_plate_codes)]
     filtered_bk = sorted(filtered_bk, key=lambda x: x['f66'], reverse=True)
     stock_dict = {}
 
-    for idx, bk in enumerate(filtered_bk[:10], start=1):
+    for idx, bk in enumerate(filtered_bk[:6], start=1):
         bk_code = bk.get('f12')
         bk_name = bk.get('f14')
         bk_net_inflow = bk.get('f66', 0) + bk.get('f72', 0)
@@ -796,8 +798,8 @@ def fetch_and_parse_bk_list():
             print(f"板块 {bk_code} {bk_name} 请求失败: {e}")
             continue
 
-        filtered_bst = [bst for bst in stock_list if bst.get('f3', 0) > 8]
-        for stock in filtered_bst[:10]:
+        filtered_bst = [bst for bst in stock_list if float(bst.get('f3', 0)) > 8]
+        for stock in stock_list[:10]:
             code = stock.get('f12')
             if code in stock_dict:
                 stock_dict[code]['板块列表'].append(bk_info)

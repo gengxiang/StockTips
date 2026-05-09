@@ -1,6 +1,14 @@
 # coding=gbk
+import re
+
 import requests
 from bs4 import BeautifulSoup
+
+# # from playwright.sync_api import sync_playwright
+# from selenium import webdriver
+# from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.chrome.service import Service
+# from webdriver.chrome import ChromeDriverManager
 
 # 2. 同花顺概念资金流接口（AJAX 请求）
 url = "https://data.10jqka.com.cn/funds/gnzjl/field/je/order/DESC/ajax/1/free/1/"
@@ -19,15 +27,23 @@ FILTER_KEYWORDS = [
 ]
 
 
+def get_cookie():
+    return ""
+
+
 def fetch_and_parse_bk_list():
+    # https://data.eastmoney.com/bkzj/hy.html
     # 1. 修正请求头变量名（统一用 headers，避免拼写错误） https://data.10jqka.com.cn/funds/gnzjl/###
+    cookie = "_ga=GA1.1.966233084.1764860120; __utma=156575163.966233084.1764860120.1765545861.1765545861.1; __utmz=156575163.1765545861.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); Hm_lvt_69929b9dce4c22a060bd22d703b2a280=1768737610; _ga_H2RK0R0681=GS2.1.s1768737611$o2$g0$t1768739056$j60$l0$h0; Hm_lvt_a333197d2292e40ca3f2321a61ddfa64=1776431492,1776955844,1777549735,1778077813; HMACCOUNT=8DBD565843D4A92C; Hm_lvt_9d25c03aef06fec6abea265b79509ba4=1776431492,1776955844,1777549735,1778077813; Hm_lvt_60bad21af9c824a4a0530d5dbf4357ca=1776431493,1776955844,1777549735,1778077813; Hm_lvt_78c58f01938e4d85eaf619eae71b4ed1=1776431493,1776955844,1777549735,1778077813; Hm_lvt_f79b64788a4e377c608617fba4c736e2=1776431493,1776955844,1777549735,1778077813; _tea_utm_cache_10000007=undefined; Hm_lpvt_a333197d2292e40ca3f2321a61ddfa64=1778328272; Hm_lpvt_9d25c03aef06fec6abea265b79509ba4=1778328272; Hm_lpvt_78c58f01938e4d85eaf619eae71b4ed1=1778328272; Hm_lpvt_60bad21af9c824a4a0530d5dbf4357ca=1778328272; Hm_lpvt_f79b64788a4e377c608617fba4c736e2=1778328272; v=A54LguqOezYGQq9SWkqC6TjS7z_lX2Pr9CEWvUgnC7fekTChsO-y6cSzZsob" \
+             ""
     headers = {
         "Accept": "text/html, */*; q=0.01",
         "Accept-Encoding": "gzip, deflate, br, zstd",
         "Accept-Language": "zh-CN,zh;q=0.9",
-        "Cookie": "Hm_lvt_69929b9dce4c22a060bd22d703b2a280=1764860118; userid=ths_gu_e4a316ede182182b575b5da0f7770969; _ga=GA1.1.966233084.1764860120; _tea_utm_cache_10000007=undefined; _ga_H2RK0R0681=GS2.1.s1764860119$o1$g1$t1764860331$j60$l0$h0; Hm_lvt_9d25c03aef06fec6abea265b79509ba4=1764860134,1765024722; HMACCOUNT=8DBD565843D4A92C; Hm_lvt_a333197d2292e40ca3f2321a61ddfa64=1764860134,1765024722; Hm_lvt_60bad21af9c824a4a0530d5dbf4357ca=1764860134,1765024722; Hm_lvt_78c58f01938e4d85eaf619eae71b4ed1=1764860134,1765024722; Hm_lvt_f79b64788a4e377c608617fba4c736e2=1764860134,1765024722; Hm_lpvt_9d25c03aef06fec6abea265b79509ba4=1765031094; Hm_lpvt_a333197d2292e40ca3f2321a61ddfa64=1765031094; Hm_lpvt_78c58f01938e4d85eaf619eae71b4ed1=1765031095; Hm_lpvt_60bad21af9c824a4a0530d5dbf4357ca=1765031095; Hm_lpvt_f79b64788a4e377c608617fba4c736e2=1765031095; v=A99KRaM1yqIAM86-X15QcYWQbjhsRDPhTZ8323EseaLWBPBmeRTDNl1oxyaC",
+        "Cookie": cookie,
+        # "Cookie": "_ga=GA1.1.966233084.1764860120; __utma=156575163.966233084.1764860120.1765545861.1765545861.1; __utmz=156575163.1765545861.1.1.utmcsr=(direct)|utmccn=(direct)|utmcmd=(none); Hm_lvt_69929b9dce4c22a060bd22d703b2a280=1768737610; _ga_H2RK0R0681=GS2.1.s1768737611$o2$g0$t1768739056$j60$l0$h0; Hm_lvt_a333197d2292e40ca3f2321a61ddfa64=1775236318,1775571426,1776088490,1776351902; HMACCOUNT=8DBD565843D4A92C; Hm_lvt_9d25c03aef06fec6abea265b79509ba4=1775236318,1775571426,1776088490,1776351902; Hm_lvt_78c58f01938e4d85eaf619eae71b4ed1=1775236318,1775571426,1776088491,1776351902; Hm_lvt_60bad21af9c824a4a0530d5dbf4357ca=1775236318,1775571426,1776088491,1776351902; Hm_lvt_f79b64788a4e377c608617fba4c736e2=1775236318,1775571426,1776088491,1776351902; _tea_utm_cache_10000007=undefined; Hm_lpvt_a333197d2292e40ca3f2321a61ddfa64=1776430695; Hm_lpvt_60bad21af9c824a4a0530d5dbf4357ca=1776430695; Hm_lpvt_f79b64788a4e377c608617fba4c736e2=1776430695; Hm_lpvt_78c58f01938e4d85eaf619eae71b4ed1=1776430695; Hm_lpvt_9d25c03aef06fec6abea265b79509ba4=1776430695; v=A5wJjAREGU1cyu2RCALz6CQ5bbFLFUDdwrtUA3adqitoOzKvniUQzxLJJJvF",
         "Dnt": "1",
-        "Hexin-V": "A99KRaM1yqIAM86-X15QcYWQbjhsRDPhTZ8323EseaLWBPBmeRTDNl1oxyaC",
+        "Hexin-V": re.search(r'v=([^;]+)', cookie).group(1),
         "Priority": "u=1, i",
         "Referer": "https://data.10jqka.com.cn/funds/gnzjl/",
         "Sec-Ch-Ua": "\"Google Chrome\";v=\"143\", \"Chromium\";v=\"143\", \"Not A(Brand\";v=\"24\"",
@@ -76,3 +92,9 @@ def fetch_and_parse_bk_list():
     filtered_out = [item for item in result if item['行业名称'] not in FILTER_KEYWORDS]
     filtered_result = [item for item in filtered_out if item['净流入资金(亿)'] > 50][:10]
     return filtered_result
+
+# fetch_and_parse_bk_list();
+# print(get_10jqka_cookie_playwright())
+# get_10jqka_cookie()
+# 调用示例
+# print(get_10jqka_cookie_selenium())

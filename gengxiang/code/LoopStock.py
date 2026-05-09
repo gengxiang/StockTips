@@ -4411,14 +4411,14 @@ all_stock_code = [
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
+
 def zs_dump_list(stock_code_list):
+    today_list = GetSaveStock.get_current_batch(stock_code_list, False)
     total_amo = 0
     yesterday_amo = 0
     total_amo_5 = 0
     total_amo_16 = 0
     total_amo_30 = 0
-    today_list = GetSaveStock.get_current_batch(stock_code_list, False)
-
     for num in range(0, len(stock_code_list)):
         stock_code = stock_code_list[num]
         stock_today = [today_list[num]]
@@ -4436,7 +4436,23 @@ def zs_dump_list(stock_code_list):
         yesterday_amo += history_list[1]['amo']
         total_amo += today_list[num]['amo']
 
-    return total_amo, yesterday_amo, total_amo_5 / 5, total_amo_16 / 16, total_amo_30 / 30
+        total_price = 0
+        yesterday_price = 0
+        total_price_5 = 0
+        total_price_16 = 0
+        total_price_30 = 0
+        for idx, item in enumerate(history_list):
+            price = item.get('price', 0)
+            if idx < 5:
+                total_price_5 += price
+            if idx < 16:
+                total_price_16 += price
+            if idx < 30:
+                total_price_30 += price
+        yesterday_price += history_list[1]['price']
+        total_price += today_list[num]['price']
+
+    return total_amo, yesterday_amo, total_amo_5 / 5, total_amo_16 / 16, total_amo_30 / 30, total_price, yesterday_price, total_price_5 / 5, total_price_16 / 16, total_price_30 / 30
 
 
 def zs_dump(stock_code_list):
@@ -4474,6 +4490,7 @@ def full_dump_list(stock_code_list, run_mysql, w_file):
         # history_list = GetSaveStock.get_excel(excel_file_name)
         if len(history_list) >= 20:
             info = AnalysisStock.get_analysis_info(history_list, 7, 16)
+
             # if info['stop_price'] == info['price']:
             #     stop_num = stop_num + 1
             # if info['b_stop_num'] == info['price']:
@@ -4560,11 +4577,12 @@ def loop_stock():
             print(stop)
             file.write(json.dumps(stop, ensure_ascii=False))
             file.write("\n")
-        # file.write("满足趋势分析可买标的: \n")
-        # for select in select_list:
-        #     print(select)
-        #     file.write(json.dumps(select, ensure_ascii=False))
-        #     file.write("\n")
+        file.write("满足趋势分析可买标的: \n")
+        print("=" * 70)
+        for select in select_list:
+            print(select)
+            file.write(json.dumps(select, ensure_ascii=False))
+            file.write("\n")
     # full_dump_list(['sh000001', 'sz399001'], run_with_mysql, False)
     return stop_list, select_list
 
@@ -4596,7 +4614,6 @@ def timerRun():
     loop = loop_stock()
     Wechat.send_wechat_stock(loop[0], loop[1])
     Wechat.send_wechat_jrj(FocusReview.get_jrj_view())
-    # runRank()
 
 
 # runInd()
