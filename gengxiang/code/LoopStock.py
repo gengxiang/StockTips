@@ -4,9 +4,10 @@ import time
 import AnalysisStock
 import FocusReview
 import GetSaveStock
-from gengxiang.code import Wechat, LoopBK, thsBK
+from gengxiang.code import Wechat
 
 all_stock_code = [
+    'sh000002',
     'sh601899',
     'sh603527',
     'sh603979',
@@ -4411,48 +4412,264 @@ all_stock_code = [
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
-
-def zs_dump_list(stock_code_list):
+def zs_dump_list1(stock_code_list, continuous_down=3):
+    """
+    批量多股票批量行情统计
+    对齐单股zs_dump_list全部能力：MA16均线计算、连续向下弱势、涨转跌/跌转涨拐点
+    :param stock_code_list: 股票代码列表
+    :param continuous_down: MA16连续向下N天判定弱势，默认3
+    :return:
+        tuple(
+            total_amo, yesterday_amo, day_before_yest_amo,
+            avg_amo5, avg_amo16, avg_amo30,
+            total_price, yesterday_price, avg_price5, avg_price16, avg_price30,
+            is_weak_market, ma16_top_signal, ma16_bottom_signal
+        )
+    """
     today_list = GetSaveStock.get_current_batch(stock_code_list, False)
+
+    # 全局汇总变量
     total_amo = 0
     yesterday_amo = 0
+    day_before_yest_amo = 0
     total_amo_5 = 0
     total_amo_16 = 0
     total_amo_30 = 0
-    for num in range(0, len(stock_code_list)):
-        stock_code = stock_code_list[num]
-        stock_today = [today_list[num]]
-        GetSaveStock.save_mysql(stock_today)
+
+    total_price = 0
+    yesterday_price = 0
+    total_price_5 = 0
+    total_price_16 = 0
+    total_price_30 = 0
+
+    # 存储每只股票MA16趋势标记，最后统一汇总判断
+    stock_weak_list = []
+    stock_top_list = []
+    stock_bottom_list = []
+
+    for stock_code, today_data in zip(stock_code_list, today_list):
+        # 入库当日数据
+        GetSaveStock.save_mysql([today_data])
+        print("当日行情：--->", today_data)
         history_list = GetSaveStock.get_mysql(stock_code)
-        for idx, item in enumerate(history_list):
-            amo = item.get('amo', 0)
-            if idx < 5:
-                total_amo_5 += amo
-            if idx < 16:
-                total_amo_16 += amo
-            if idx < 30:
-                total_amo_30 += amo
-        print("历史列表：--->", stock_today[0])
-        yesterday_amo += history_list[1]['amo']
-        total_amo += today_list[num]['amo']
+        hist_len = len(history_list)
 
-        total_price = 0
-        yesterday_price = 0
-        total_price_5 = 0
-        total_price_16 = 0
-        total_price_30 = 0
-        for idx, item in enumerate(history_list):
-            price = item.get('price', 0)
-            if idx < 5:
-                total_price_5 += price
-            if idx < 16:
-                total_price_16 += price
-            if idx < 30:
-                total_price_30 += price
-        yesterday_price += history_list[1]['price']
-        total_price += today_list[num]['price']
+        # 单只临时累加
+        single_amo5 = single_amo16 = single_amo30 = 0
+        single_price5 = single_price16 = single_price30 = 0
+        close_arr = []
 
-    return total_amo, yesterday_amo, total_amo_5 / 5, total_amo_16 / 16, total_amo_30 / 30, total_price, yesterday_price, total_price_5 / 5, total_price_16 / 16, total_price_30 / 30
+        # 一次循环同时统计成交额、价格、收集收盘价
+        for idx, item in enumerate(history_list):
+            amo = item.get("amo", 0)
+            price = item.get("price", 0)
+            close = item.get("close", 0)
+            close_arr.append(close)
+
+            if idx < 5:
+                single_amo5 += amo
+                single_price5 += price
+            if idx < 16:
+                single_amo16 += amo
+                single_price16 += price
+            if idx < 30:
+                single_amo30 += amo
+                single_price30 += price
+
+        # 汇总到全局
+        total_amo_5 += single_amo5
+        total_amo_16 += single_amo16
+        total_amo_30 += single_amo30
+        total_price_5 += single_price5
+        total_price_16 += single_price16
+        total_price_30 += single_price30
+
+        total_amo += today_data.get("amo", 0)
+        total_price += today_data.get("price", 0)
+
+        # 昨日成交额/价格 容错
+        if hist_len >= 2:
+            y_amo = history_list[1].get("amo", 0)
+            y_price = history_list[1].get("price", 0)
+            yesterday_amo += y_amo
+            yesterday_price += y_price
+        # 前日成交额 容错
+        if hist_len >= 3:
+            day_before_yest_amo += history_list[2].get("amo", 0)
+
+        # ---------------------- 单只股票MA16计算、趋势判断 ----------------------
+        s_weak = False
+        s_top = False
+        s_bottom = False
+        min_kline_need = 16 + continuous_down
+
+        if hist_len >= min_kline_need:
+            ma16_series = []
+            for i in range(15, hist_len):
+                window = close_arr[i - 15: i + 1]
+                ma16_val = sum(window) / 16
+                ma16_series.append(ma16_val)
+
+            # 连续向下弱势判断
+            drop_count = 0
+            for i in range(len(ma16_series) - 1, 0, -1):
+                if ma16_series[i] < ma16_series[i - 1]:
+                    drop_count += 1
+                else:
+                    break
+            if drop_count >= continuous_down:
+                s_weak = True
+
+            # 均线拐点判断（至少3根均线）
+            if len(ma16_series) >= 3:
+                m_prev2 = ma16_series[-3]
+                m_prev1 = ma16_series[-2]
+                m_curr = ma16_series[-1]
+                s_top = (m_prev1 > m_prev2) and (m_curr < m_prev1)
+                s_bottom = (m_prev1 < m_prev2) and (m_curr > m_prev1)
+
+        stock_weak_list.append(s_weak)
+        stock_top_list.append(s_top)
+        stock_bottom_list.append(s_bottom)
+
+    # 批量汇总标记：只要列表中有任意一只满足，整体标记为True
+    is_weak_market = any(stock_weak_list)
+    ma16_top_signal = any(stock_top_list)
+    ma16_bottom_signal = any(stock_bottom_list)
+
+    # 固定除以周期（和你原代码逻辑一致）
+    avg_amo5 = total_amo_5 / 5
+    avg_amo16 = total_amo_16 / 16
+    avg_amo30 = total_amo_30 / 30
+
+    avg_price5 = total_price_5 / 5
+    avg_price16 = total_price_16 / 16
+    avg_price30 = total_price_30 / 30
+
+    return (
+        total_amo,
+        yesterday_amo,
+        day_before_yest_amo,
+        avg_amo5,
+        avg_amo16,
+        avg_amo30,
+        total_price,
+        yesterday_price,
+        avg_price5,
+        avg_price16,
+        avg_price30,
+        is_weak_market,
+        ma16_top_signal,
+        ma16_bottom_signal
+    )
+
+
+def zs_dump_list(stock_code, continuous_down=3):
+    """
+    单只股票行情统计
+    功能清单：
+    1. 拉取当日行情写入数据库
+    2. 当日/昨日成交额、价格汇总
+    3. 5/16/30周期成交额、价格均值
+    4. MA16连续向下 → 弱势空仓标记 is_weak_market
+    5. MA16涨转跌拐点信号 ma16_top_signal（见顶提醒）
+    6. MA16跌转涨拐点信号 ma16_bottom_signal（见底提醒）
+    :param stock_code: 个股代码字符串
+    :param continuous_down: MA16连续向下N天判定弱势，默认3
+    :return: tuple
+    """
+    stock_code_list = [stock_code]
+    today_list = GetSaveStock.get_current_batch(stock_code_list, False)
+    today_data = today_list[0]
+
+    GetSaveStock.save_mysql([today_data])
+    print("当日行情：--->", today_data)
+
+    history_list = GetSaveStock.get_mysql(stock_code)
+    hist_len = len(history_list)
+
+    # ========== 成交额、价格统计模块 ==========
+    total_amo = today_data.get("amo", 0)
+    total_price = today_data.get("price", 0)
+
+    yesterday_amo = 0
+    yesterday_price = 0
+    if hist_len >= 2:
+        yesterday_amo = history_list[1].get("amo", 0)
+        yesterday_price = history_list[1].get("price", 0)
+
+    sum_amo5 = sum_amo16 = sum_amo30 = 0
+    sum_price5 = sum_price16 = sum_price30 = 0
+    close_arr = []
+
+    for idx, item in enumerate(history_list):
+        amo = item.get("amo", 0)
+        price = item.get("price", 0)
+        close = item.get("close", 0)
+        close_arr.append(close)
+
+        if idx < 5:
+            sum_amo5 += amo
+            sum_price5 += price
+        if idx < 16:
+            sum_amo16 += amo
+            sum_price16 += price
+        if idx < 30:
+            sum_amo30 += amo
+            sum_price30 += price
+
+    def safe_avg(total, max_cnt):
+        real_cnt = min(max_cnt, hist_len)
+        return total / real_cnt if real_cnt > 0 else 0
+
+    avg_amo5 = safe_avg(sum_amo5, 5)
+    avg_amo16 = safe_avg(sum_amo16, 16)
+    avg_amo30 = safe_avg(sum_amo30, 30)
+
+    avg_price5 = safe_avg(sum_price5, 5)
+    avg_price16 = safe_avg(sum_price16, 16)
+    avg_price30 = safe_avg(sum_price30, 30)
+
+    # ========== MA16均线、拐点、弱势判断模块 ==========
+    is_weak_market = False
+    ma16_top_signal = False
+    ma16_bottom_signal = False
+    min_kline_need = 16 + continuous_down
+
+    if hist_len >= min_kline_need:
+        # 计算全部16日均线序列
+        ma16_series = []
+        for i in range(15, hist_len):
+            window = close_arr[i - 15: i + 1]
+            ma16_val = sum(window) / 16
+            ma16_series.append(ma16_val)
+
+        # 1、连续向下弱势判断
+        drop_count = 0
+        for i in range(len(ma16_series) - 1, 0, -1):
+            if ma16_series[i] < ma16_series[i - 1]:
+                drop_count += 1
+            else:
+                break
+        if drop_count >= continuous_down:
+            is_weak_market = True
+
+        # 2、均线拐点判断：需要至少3根均线（前前、前、当前）判断拐头切换
+        if len(ma16_series) >= 3:
+            m_prev2 = ma16_series[-3]  # 倒数第三根均线
+            m_prev1 = ma16_series[-2]  # 倒数第二根均线
+            m_curr = ma16_series[-1]  # 最新当日均线
+
+            # 前一段上涨，今日拐头向下：涨转跌，见顶提醒
+            ma16_top_signal = (m_prev1 > m_prev2) and (m_curr < m_prev1)
+            # 前一段下跌，今日拐头向上：跌转涨，见底提醒
+            ma16_bottom_signal = (m_prev1 < m_prev2) and (m_curr > m_prev1)
+
+    return (
+        total_amo, yesterday_amo, avg_amo5, avg_amo16, avg_amo30,
+        total_price, yesterday_price, avg_price5, avg_price16, avg_price30,
+        is_weak_market, ma16_top_signal, ma16_bottom_signal
+    )
 
 
 def zs_dump(stock_code_list):
@@ -4583,7 +4800,7 @@ def loop_stock():
             print(select)
             file.write(json.dumps(select, ensure_ascii=False))
             file.write("\n")
-    # full_dump_list(['sh000001', 'sz399001'], run_with_mysql, False)
+
     return stop_list, select_list
 
 
@@ -4608,12 +4825,13 @@ def runRank():
 
 
 def timerRun():
-    Wechat.send_wechat_tips(zs_dump_list(['sh000001', 'sz399001']), FocusReview.get_focus_review())
-    Wechat.send_wechat_thsbks(thsBK.fetch_and_parse_bk_list())
-    Wechat.send_wechat_bks(LoopBK.fetch_and_parse_bk_list())
-    loop = loop_stock()
-    Wechat.send_wechat_stock(loop[0], loop[1])
-    Wechat.send_wechat_jrj(FocusReview.get_jrj_view())
+    # Wechat.send_wechat_thsbks(thsBK.fetch_and_parse_bk_list())
+    # Wechat.send_wechat_bks(LoopBK.fetch_and_parse_bk_list())
+    # loop = loop_stock()
+    # Wechat.send_wechat_stock(loop[0], loop[1])
+    # Wechat.send_wechat_jrj(FocusReview.get_jrj_view())
+    Wechat.send_wechat_tips(zs_dump_list1(['sh000001', 'sz399001']), FocusReview.get_focus_review())
+    Wechat.send_wechat_tips(zs_dump_list('sh000002'), FocusReview.get_focus_review())
 
 
 # runInd()
@@ -4622,3 +4840,4 @@ def timerRun():
 # zs_dump_list(['sh000001', 'sz399001'])
 # Wechat.send_wechat_thsbks(thsBK.fetch_and_parse_bk_list())
 timerRun()
+# full_dump_list(['sz002160'], run_with_mysql, False)

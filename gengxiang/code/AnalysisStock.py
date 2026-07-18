@@ -89,11 +89,18 @@ def get_analysis_info(basic_list, ma_min, ma_max):
     min_avg4 = get_avg(basic_list[4: ma_min + 4])
 
     # 最近5天 MA3 平均价格、平均金额、平均换手
-    three_avg0 = get_avg(basic_list[0: 3 + 0])
-    three_avg1 = get_avg(basic_list[1: 3 + 1])
-    three_avg2 = get_avg(basic_list[2: 3 + 2])
-    three_avg3 = get_avg(basic_list[3: 3 + 3])
-    three_avg4 = get_avg(basic_list[4: 3 + 4])
+    four_avg0 = get_avg(basic_list[0: 4 + 0])
+    four_avg1 = get_avg(basic_list[1: 4 + 1])
+    four_avg2 = get_avg(basic_list[2: 4 + 2])
+    four_avg3 = get_avg(basic_list[3: 4 + 3])
+    four_avg4 = get_avg(basic_list[4: 4 + 4])
+
+    # # 最近5天 MA3 平均价格、平均金额、平均换手
+    # elev_avg0 = get_avg(basic_list[0: 11 + 0])
+    # elev_avg1 = get_avg(basic_list[1: 11 + 1])
+    # elev_avg2 = get_avg(basic_list[2: 11 + 2])
+    # elev_avg3 = get_avg(basic_list[3: 11 + 3])
+    # elev_avg4 = get_avg(basic_list[4: 11 + 4])
 
     analysis_info = {
         'date': basic_list[0]['date'],
@@ -116,12 +123,18 @@ def get_analysis_info(basic_list, ma_min, ma_max):
         'amo_times': big_times,
         # 16日平均换手
         'ahs': max_avg0[2],
-        # 近5天 MA3 价格 成交额 换手
-        'MA3-0': [three_avg0[0], three_avg0[1], three_avg0[2]],
-        'MA3-1': [three_avg1[0], three_avg1[1], three_avg1[2]],
-        'MA3-2': [three_avg2[0], three_avg2[1], three_avg2[2]],
-        'MA3-3': [three_avg3[0], three_avg3[1], three_avg3[2]],
-        'MA3-4': [three_avg4[0], three_avg4[1], three_avg4[2]],
+        # 近5天 MA4 价格 成交额 换手
+        'MA4-0': [four_avg0[0], four_avg0[1], four_avg0[2]],
+        'MA4-1': [four_avg1[0], four_avg1[1], four_avg1[2]],
+        'MA4-2': [four_avg2[0], four_avg2[1], four_avg2[2]],
+        'MA4-3': [four_avg3[0], four_avg3[1], four_avg3[2]],
+        'MA4-4': [four_avg4[0], four_avg4[1], four_avg4[2]],
+        # # 近5天 MA11 价格 成交额 换手
+        # 'MA11-0': [elev_avg0[0], elev_avg0[1], elev_avg0[2]],
+        # 'MA11-1': [elev_avg1[0], elev_avg1[1], elev_avg1[2]],
+        # 'MA11-2': [elev_avg2[0], elev_avg2[1], elev_avg2[2]],
+        # 'MA11-3': [elev_avg3[0], elev_avg3[1], elev_avg3[2]],
+        # 'MA11-4': [elev_avg4[0], elev_avg4[1], elev_avg4[2]],
         # 近5天 MA7 价格 成交额 换手
         'MA7-0': [min_avg0[0], min_avg0[1], min_avg0[2]],
         'MA7-1': [min_avg1[0], min_avg1[1], min_avg1[2]],
@@ -180,6 +193,42 @@ def get_analysis_info(basic_list, ma_min, ma_max):
     return analysis_info
 
 
+def calculate_5day_subindicator(analysis_info):
+    """
+    从 analysis_info 中提取近5天价格 + MA7，计算近5天指标：
+    EMA( (CLOSE-MA7)/MA7*480, 2 )
+    返回：近5天指标数组 [最新, 1日前, 2日前, 3日前, 4日前]
+    """
+    # 1. 提取近5天收盘价（最新 → 5日前）
+    price_arr = analysis_info['price_arr']  # [今日, 1日, 2日, 3日, 4日]
+
+    # 2. 提取近5天 MA7 价格
+    ma7_arr = [
+        analysis_info['MA16-0'][0],  # 今日 MA7
+        analysis_info['MA16-1'][0],  # 1日前 MA7
+        analysis_info['MA16-2'][0],  # 2日前 MA7
+        analysis_info['MA16-3'][0],  # 3日前 MA7
+        analysis_info['MA16-4'][0]  # 4日前 MA7
+    ]
+
+    # 3. 转成 pandas 序列计算
+    # c = pd.Series(price_arr[::-1])
+    # m = pd.Series(ma7_arr[::-1])
+    c = pd.Series(price_arr[::-1]).reset_index(drop=True)
+    m = pd.Series(ma7_arr[::-1]).reset_index(drop=True)
+
+    # 1. 计算中间值
+    # 2. 同花顺公式：(C-MA)/MA*480
+    x = (c - m) / m * 480
+
+    ema2 = ema_tal(x, 7)  # 标准算法
+    result = ema2 * 5
+
+    final = result[::-1].reset_index(drop=True).round(2)
+
+    return final
+
+
 def calculate_5day_indicator(analysis_info):
     """
     主力:=EMA( (CLOSE-MA(CLOSE,7))/MA(CLOSE,7)*480,2)*5,colorcyan;
@@ -234,6 +283,59 @@ def analysis_stop_time(analysis_info):
 # 近日有涨停，当天倍量，阳线，ma5小于10 %，ma16向上
 
 
+def filter_main_force(indicator_list):
+    """
+    条件：
+    1. 今天的主力值 < 200
+    2. 主力值连续两天增加超过50：
+       今天 - 昨天 > 50 且 昨天 - 前天 > 50
+    """
+    # 至少需要3天数据（今天、昨天、前天）
+    if len(indicator_list) < 3:
+        return False
+
+    today = indicator_list[0]
+    yesterday = indicator_list[1]
+    day_before_yesterday = indicator_list[2]
+
+    # 条件1：今天主力值 < 200
+    cond1 = today < 200
+
+    # 条件2：连续两天增加超过50
+    increase1 = today - yesterday
+    increase2 = yesterday - day_before_yesterday
+    cond2 = (increase1 > 50) and (increase2 > 50)
+
+    return cond1 and cond2
+
+
+def filter_total_force(total_list):
+    """
+    条件：
+    1. 合力值连续两天上涨：今天-昨天 > 0 且 昨天-前天 > 0
+    2. 今天-昨天 > 昨天-前天（上涨加速）
+    """
+    # 至少需要3天数据（今天、昨天、前天）
+    if len(total_list) < 3:
+        return False
+
+    today = total_list[0]
+    yesterday = total_list[1]
+    day_before_yesterday = total_list[2]
+
+    # 计算两天的上涨幅度
+    rise1 = today - yesterday  # 今天相对昨天的涨幅
+    rise2 = yesterday - day_before_yesterday  # 昨天相对前天的涨幅
+
+    # 条件1：连续两天上涨
+    cond1 = (rise1 > 0) and (rise2 > 0)
+
+    # 条件2：上涨加速（今天涨幅 > 昨天涨幅）
+    cond2 = rise1 > rise2
+
+    return cond1 and cond2
+
+
 def check_strong_start(indicator):
     """
     纯净版：连续2天暴涨（无EMA、无平滑）
@@ -259,16 +361,16 @@ def check_strong_start(indicator):
     diff3 = b_yesterday - bb_yesterday  # 前日涨幅
 
     # ===================== 你的全部条件 =====================
-    cond1 = today < 300  # 1. 当天 < 200
-    cond2 = diff1 >= 50  # 2. 今天-昨天 >=50
-    cond3 = diff2 >= 50  # 3. 昨天-前天 >=50
-    cond4 = diff3 >= 50  # 4. 前天-大前天 >=50
+    cond1 = today < 800  # 1. 当天 < 200
+    cond2 = diff1 >= 100  # 2. 今天-昨天 >=50
+    cond3 = diff2 >= 100  # 3. 昨天-前天 >=50
+    cond4 = diff3 >= 100  # 4. 前天-大前天 >=50
 
     # 5. 单日涨幅不能超过 100（任何一天都不行）
-    no_overflow = (diff1 <= 200) and (diff2 <= 200) and (diff3 <= 200)
+    # no_overflow = (diff1 <= 200) and (diff2 <= 200) and (diff3 <= 200)
 
     # 最终组合条件
-    return cond1 and cond2 and (cond3 or cond4) and no_overflow
+    return cond1 and cond2 and (cond3 or cond4)
 
 
 def analyze_trend_final(indicator):
@@ -353,11 +455,16 @@ def analysis(analysis_info, ma_min, ma_max):
     # 你的 analysis_info 已经存在时，直接调用：
     indicator = calculate_5day_indicator(analysis_info)
     analysis_info['indicator'] = indicator.tolist()
-    # final_condition = analyze_trend_final(indicator)
-    final_condition = check_strong_start(indicator)
+    subindicator = calculate_5day_subindicator(analysis_info)
+    analysis_info['subindicator'] = subindicator.tolist()
+    analysis_info['totalInd'] = [round(mf * 1.95 + rt * 1.45, 2) for mf, rt in
+                                 zip(analysis_info['indicator'], analysis_info['subindicator'])]
 
     if 'ST' in analysis_info['name'] or '银行' in analysis_info['name'] or '证券' in analysis_info['name'] or '地产' in \
             analysis_info['name']:
+        return
+        # 未涨停
+    elif analysis_info['times'] < 1:
         return
     # 7. 股价偏离均线过滤（核心技术面）
     # 条件1：当前价格 > 16日均线的1.2倍 → 涨幅过大，超买，剔除
@@ -369,16 +476,31 @@ def analysis(analysis_info, ma_min, ma_max):
     # 8. 趋势 + 量能过滤
     # 条件1：3日均线 < 16日均线×1.2 → 短期趋势不强，剔除
     # 条件2：今日成交额 < 16日均线价格 → 量能不足，剔除
-    elif analysis_info['MA3-0'][0] * 1.1 < (analysis_info['MA16-0'][0]) or (analysis_info['amo_arr'][0]) * 1.1 < \
+    elif analysis_info['MA4-0'][0] * 1.1 < (analysis_info['MA16-0'][0]) or (analysis_info['amo_arr'][0]) * 1.1 < \
             analysis_info['MA16-0'][0]:
         return
 
     # 平均换手率小于1.5,平均成交额小于5000w
-    elif analysis_info['ahs'] < 1.5 or analysis_info['aamo-0'][1] < 0.5:
+    elif analysis_info['ahs'] < 4 or analysis_info['aamo-0'][1] < 200000:
         return
 
-    elif final_condition:
-        print(analysis_info['name'], '5日指标：', indicator.tolist())
+    """
+    主力:=EMA( (CLOSE-MA(CLOSE,7))/MA(CLOSE,7)*480,2)*5,colorcyan;
+    散户:=EMA( (CLOSE-MA(CLOSE,11))/MA(CLOSE,11)*480,7)*5,colorred;
+    合:= 主力*1.95+散户*1.45;
+    XC:= 合 - REF(合,1);
+    COND:=(MA(C,16) > REF(MA(C,16),1)) AND HIGH > MA(C,16);
+    DRAWTEXT(COND AND 主力 < 200 AND (主力 - REF(主力,1)) > 50 ,LOW*0.97,'加'),colorwhite;
+    DRAWICON(COND AND XC>0 AND (合+0.85*REF(合,2))>1.85*REF(合,1),MA14*0.95,1); 
+    """
+
+    # final_condition = analyze_trend_final(indicator)
+    main_force_result = filter_main_force(analysis_info['indicator'])
+    total_force_result = filter_total_force(analysis_info['totalInd'])
+    final_condition = check_strong_start(analysis_info['totalInd'])
+
+    if (main_force_result and final_condition) or (total_force_result and final_condition):
+        print(analysis_info['name'], '5日指标：', analysis_info['totalInd'])
         print("=" * 70)
         return analysis_info
 
@@ -413,7 +535,7 @@ def analysis(analysis_info, ma_min, ma_max):
     #     # 8. 趋势 + 量能过滤
     #     # 条件1：3日均线 < 16日均线×1.2 → 短期趋势不强，剔除
     #     # 条件2：今日成交额 < 16日均线价格 → 量能不足，剔除
-    #     elif analysis_info['MA3-0'][0] * 1.1 < (analysis_info['MA16-0'][0]) or (analysis_info['amo_arr'][0])*1.1 < analysis_info['MA16-0'][0]:
+    #     elif analysis_info['MA4-0'][0] * 1.1 < (analysis_info['MA16-0'][0]) or (analysis_info['amo_arr'][0])*1.1 < analysis_info['MA16-0'][0]:
     #         return
     #
     #
