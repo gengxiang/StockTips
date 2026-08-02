@@ -362,3 +362,5 @@ def get_current_batch_from_file():
 
 
 # get_second1_stop_mysql()
+
+# get_current_batch('sh000985', False)

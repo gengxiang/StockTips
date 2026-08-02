@@ -1,10 +1,13 @@
+from __future__ import annotations
+
 import json
 import time
+from typing import List, Tuple, Dict, NamedTuple, Optional
 
 import AnalysisStock
 import FocusReview
 import GetSaveStock
-from gengxiang.code import Wechat
+from gengxiang.code import Wechat, thsBK, LoopBK
 
 all_stock_code = [
     'sh000002',
@@ -4412,19 +4415,548 @@ all_stock_code = [
 todayStr = time.strftime('%Y-%m-%d', time.localtime(time.time()))
 
 
-def zs_dump_list1(stock_code_list, continuous_down=3):
-    """
-    批量多股票批量行情统计
-    对齐单股zs_dump_list全部能力：MA16均线计算、连续向下弱势、涨转跌/跌转涨拐点
-    :param stock_code_list: 股票代码列表
-    :param continuous_down: MA16连续向下N天判定弱势，默认3
-    :return:
-        tuple(
-            total_amo, yesterday_amo, day_before_yest_amo,
-            avg_amo5, avg_amo16, avg_amo30,
-            total_price, yesterday_price, avg_price5, avg_price16, avg_price30,
-            is_weak_market, ma16_top_signal, ma16_bottom_signal
+def volume_based_position_analysis(current, yesterday, ma5, ma14):
+    """量价单维度打分，兼容旧结构key"""
+    ma5 = ma5 if ma5 != 0 else 1e-9
+    ma14 = ma14 if ma14 != 1e-9 else 1e-9
+    current = max(current, 1e-9)
+
+    ratio_5 = current / ma5
+    ratio_14 = current / ma14
+    raw_score = ratio_5 * 30 + ratio_14 * 20
+    dim_score = max(0, min(100, raw_score))
+
+    return {
+        "综合评分": round(dim_score, 1),
+        "当日值": round(current, 2),
+        "昨日值": round(yesterday, 2),
+        "5周期均值": round(ma5, 2),
+        "16周期均值": round(ma14, 2)
+    }
+
+
+# -------------------------- 模块2：行情池聚合计算 --------------------------
+def zs_calc_stock_pool(
+        stock_input: str | List[str],
+        continuous_down: int = 3,
+        slope_threshold: float = 0.02
+) -> Optional[NamedTuple]:
+    # 内嵌全局策略常量
+    PERIOD_SHORT = 5
+    PERIOD_MID = 14
+    PERIOD_LONG = 30
+    PERIOD_LIQUID = 20
+    LIQUID_RATIO_LOW = 0.7
+    DROP_CRASH_THRESHOLD = -0.03
+
+    # 内嵌类型定义
+    class StockPoolMetrics(NamedTuple):
+        total_amo: float
+        yesterday_amo: float
+        day_before_yest_amo: float
+        avg_amo5: float
+        avg_amo14: float
+        avg_amo30: float
+        avg_amo20_liquid: float
+        total_price: float
+        yesterday_price: float
+        avg_price5: float
+        avg_price14: float
+        avg_price30: float
+        ma14_weak: bool
+        ma14_top: bool
+        ma14_bottom: bool
+        rise_acc: bool
+        rise_slow: bool
+        fall_acc: bool
+        fall_slow: bool
+        is_low_liquid: bool
+        has_crash_today: bool
+        amp: float  # 新增涨跌幅字段
+
+    class SingleStockSignal(NamedTuple):
+        s_weak: bool
+        s_top: bool
+        s_bottom: bool
+        s_rise_acc: bool
+        s_rise_slow: bool
+        s_fall_acc: bool
+        s_fall_slow: bool
+        close_chg: float
+
+    # 内嵌工具函数
+    def calc_ma(series: List[float], window: int) -> List[float]:
+        ma_list = []
+        for i in range(window - 1, len(series)):
+            window_slice = series[i - window + 1: i + 1]
+            ma_val = sum(window_slice) / window
+            ma_list.append(ma_val)
+        return ma_list
+
+    def calc_period_sum(arr: List[Dict], field: str, max_period: int) -> float:
+        total = 0.0
+        for idx, item in enumerate(arr):
+            if idx >= max_period:
+                break
+            total += item.get(field, 0.0)
+        return total
+
+    def calc_avg_series(arr: List[Dict], field: str, window: int) -> float:
+        if len(arr) < window:
+            return 0.0
+        s = calc_period_sum(arr, field, window)
+        return s / window
+
+    # 入参重命名 sig_history，不再遮蔽外层 history_list
+    def calc_single_stock_signal(
+            sig_history: List[Dict],
+            today_close: float,
+            pre_close: float,
+            c_down: int,
+            s_thr: float
+    ) -> Tuple[Dict, SingleStockSignal]:
+        sig_hist_len = len(sig_history)
+        close_arr = [item.get("close", 0.0) for item in sig_history]
+        close_chg = (today_close - pre_close) / pre_close if pre_close != 0 else 0
+
+        s_amo5 = calc_period_sum(sig_history, "amo", PERIOD_SHORT)
+        s_amo14 = calc_period_sum(sig_history, "amo", PERIOD_MID)
+        s_amo30 = calc_period_sum(sig_history, "amo", PERIOD_LONG)
+        avg_amo20 = calc_avg_series(sig_history, "amo", PERIOD_LIQUID)
+
+        s_price5 = calc_period_sum(sig_history, "price", PERIOD_SHORT)
+        s_price14 = calc_period_sum(sig_history, "price", PERIOD_MID)
+        s_price30 = calc_period_sum(sig_history, "price", PERIOD_LONG)
+
+        s_weak = s_top = s_bottom = False
+        s_rise_acc = s_rise_slow = s_fall_acc = s_fall_slow = False
+        min_kline_need = PERIOD_MID + c_down
+
+        if sig_hist_len >= min_kline_need:
+            ma14_series = calc_ma(close_arr, PERIOD_MID)
+            drop_count = 0
+            for i in range(len(ma14_series) - 1, 0, -1):
+                delta = ma14_series[i] - ma14_series[i - 1]
+                if delta < -s_thr:
+                    drop_count += 1
+                else:
+                    break
+            if drop_count >= c_down:
+                s_weak = True
+
+            if len(ma14_series) >= 4:
+                m_t3, m_t2, m_t1, m_t0 = ma14_series[-4], ma14_series[-3], ma14_series[-2], ma14_series[-1]
+                slope_t2 = m_t2 - m_t3
+                slope_t1 = m_t1 - m_t2
+                slope_t0 = m_t0 - m_t1
+
+                s_top = (slope_t1 > s_thr) and (slope_t0 < -s_thr)
+                s_bottom = (slope_t1 < -s_thr) and (slope_t0 > s_thr)
+
+                if slope_t2 > s_thr and slope_t1 > s_thr:
+                    s_rise_acc = True if slope_t1 > slope_t2 else s_rise_slow
+                if slope_t2 < -s_thr and slope_t1 < -s_thr:
+                    abs_s2, abs_s1 = abs(slope_t2), abs(slope_t1)
+                    s_fall_acc = True if abs_s1 > abs_s2 else s_fall_slow
+
+        signal = SingleStockSignal(
+            s_weak=s_weak, s_top=s_top, s_bottom=s_bottom,
+            s_rise_acc=s_rise_acc, s_rise_slow=s_rise_slow,
+            s_fall_acc=s_fall_acc, s_fall_slow=s_fall_slow,
+            close_chg=close_chg
         )
+        period_sum_data = {
+            "amo5": s_amo5, "amo14": s_amo14, "amo30": s_amo30,
+            "avg_amo20": avg_amo20,
+            "price5": s_price5, "price14": s_price14, "price30": s_price30,
+            "close_chg": close_chg
+        }
+        return period_sum_data, signal
+
+    # 主业务逻辑
+    if isinstance(stock_input, str):
+        stock_code_list = [stock_input.strip()]
+    else:
+        stock_code_list = [str(code).strip() for code in stock_input if str(code).strip()]
+
+    if not stock_code_list:
+        print("指数池列表为空，终止计算")
+        return None
+
+    today_list = GetSaveStock.get_current_batch(stock_code_list, False)
+
+    total_amo = 0.0
+    yesterday_amo = 0.0
+    day_before_yest_amo = 0.0
+    total_amo_5 = total_amo_14 = total_amo_30 = 0.0
+    sum_avg_amo20 = 0.0
+
+    total_price = 0.0
+    yesterday_price = 0.0
+    total_price_5 = total_price_14 = total_price_30 = 0.0
+
+    signal_list: List[SingleStockSignal] = []
+    crash_flag_list: List[bool] = []
+    liquid_ratio_list: List[float] = []
+
+    for stock_code, today_data in zip(stock_code_list, today_list):
+        GetSaveStock.save_mysql([today_data])
+        print(f"[{stock_code}] 指数当日行情：--->", today_data)
+        history_list = GetSaveStock.get_mysql(stock_code)
+        hist_len = len(history_list)
+        t_close = today_data.get("close", 0.0)
+        t_pre_close = today_data.get("pre_close", 0.0)
+        t_amo = today_data.get("amo", 0.0)
+
+        # 传参改为 history_list 给 sig_history
+        stock_period_data, stock_signal = calc_single_stock_signal(
+            history_list, t_close, t_pre_close, continuous_down, slope_threshold
+        )
+        signal_list.append(stock_signal)
+
+        total_amo_5 += stock_period_data["amo5"]
+        total_amo_14 += stock_period_data["amo14"]
+        total_amo_30 += stock_period_data["amo30"]
+        sum_avg_amo20 += stock_period_data["avg_amo20"]
+
+        total_price_5 += stock_period_data["price5"]
+        total_price_14 += stock_period_data["price14"]
+        total_price_30 += stock_period_data["price30"]
+
+        total_amo += t_amo
+        total_price += today_data.get("price", 0.0)
+
+        if hist_len >= 2:
+            yesterday_amo += history_list[1].get("amo", 0.0)
+            yesterday_price += history_list[1].get("price", 0.0)
+        if hist_len >= 3:
+            day_before_yest_amo += history_list[2].get("amo", 0.0)
+
+        crash_flag_list.append(stock_signal.close_chg <= DROP_CRASH_THRESHOLD)
+        avg20 = stock_period_data["avg_amo20"]
+        liquid_ratio_list.append(t_amo / avg20 if avg20 != 0 else 1.0)
+
+    ma14_weak = any(s.s_weak for s in signal_list)
+    ma14_top = any(s.s_top for s in signal_list)
+    ma14_bottom = any(s.s_bottom for s in signal_list)
+    rise_acc = any(s.s_rise_acc for s in signal_list)
+    rise_slow = any(s.s_rise_slow for s in signal_list)
+    fall_acc = any(s.s_fall_acc for s in signal_list)
+    fall_slow = any(s.s_fall_slow for s in signal_list)
+    has_crash_today = any(crash_flag_list)
+
+    stock_count = len(stock_code_list)
+    pool_avg_liquid_ratio = sum(liquid_ratio_list) / stock_count if stock_count > 0 else 1.0
+    is_low_liquid = pool_avg_liquid_ratio < LIQUID_RATIO_LOW
+
+    avg_amo5 = total_amo_5 / PERIOD_SHORT
+    avg_amo14 = total_amo_14 / PERIOD_MID
+    avg_amo30 = total_amo_30 / PERIOD_LONG
+    avg_amo20_liquid = sum_avg_amo20 / stock_count
+
+    avg_price5 = total_price_5 / PERIOD_SHORT
+    avg_price14 = total_price_14 / PERIOD_MID
+    avg_price30 = total_price_30 / PERIOD_LONG
+
+    pool_metrics = StockPoolMetrics(
+        total_amo=total_amo,
+        yesterday_amo=yesterday_amo,
+        day_before_yest_amo=day_before_yest_amo,
+        avg_amo5=avg_amo5,
+        avg_amo14=avg_amo14,
+        avg_amo30=avg_amo30,
+        avg_amo20_liquid=avg_amo20_liquid,
+        total_price=total_price,
+        yesterday_price=yesterday_price,
+        avg_price5=avg_price5,
+        avg_price14=avg_price14,
+        avg_price30=avg_price30,
+        ma14_weak=ma14_weak,
+        ma14_top=ma14_top,
+        ma14_bottom=ma14_bottom,
+        rise_acc=rise_acc,
+        rise_slow=rise_slow,
+        fall_acc=fall_acc,
+        fall_slow=fall_slow,
+        is_low_liquid=is_low_liquid,
+        has_crash_today=has_crash_today,
+        amp=((total_price - yesterday_price) / yesterday_price) * 100
+    )
+    print("指标数据：", pool_metrics)
+    return pool_metrics
+
+
+def calc_reasonable_position2(total_amo, ma14_weak=False, ma14_top=False, ma14_bottom=False,
+                              rise_acc=False, rise_slow=False, fall_acc=False, fall_slow=False):
+    """
+    多空分级严格风控：下跌逐级限仓，放量突破均线逐级放开加仓
+    适配上游zs_calc_stock_pool输出：价格趋势MA14，成交额基准MA5
+    完整能力：
+        1. 短期量价反转识别（连续缩量转跌/连续放量转涨）
+        2. 中期MA14均线斜率拐点：涨转跌见顶、跌转涨见底
+        3. MA14长期持续向下弱势强制空仓约束
+        4. MA14趋势斜率变化：上涨加速/放缓、下跌加速/放缓提示
+        5. 分层动态仓位上限压制，多空两套风控纪律
+        6. 统一固定全套交易纪律自动拼接输出
+    :param total_amo: list
+        [今日成交额,昨日成交额,5日均额,14日均额,30日均额,今日价,昨日价,5日均价,14日均价,30日均价]
+    :param ma14_weak: MA14连续向下，长期弱势环境
+    :param ma14_top: MA14由涨转跌（中期见顶拐点）
+    :param ma14_bottom: MA14由跌转涨（中期见底拐点）
+    :param rise_acc: MA14上涨斜率放大，加速拉升
+    :param rise_slow: MA14上涨斜率收窄，上涨乏力放缓
+    :param fall_acc: MA14下跌斜率放大，加速杀跌
+    :param fall_slow: MA14下跌斜率收窄，下跌动能衰竭
+    :return: price_result, volume_result, 结果字典
+    """
+    # 拆分行情数据（同步上游MA14周期）
+    vol_today, vol_yest, vol_ma5, vol_ma14, vol_ma30 = total_amo[0:5]
+    price_today, price_yest, price_ma5, price_ma14, price_ma30 = total_amo[5:10]
+
+    # 量价打分公用函数（外部依赖volume_based_position_analysis保持不变）
+    price_result = volume_based_position_analysis(price_today, price_yest, price_ma5, price_ma14)
+    volume_result = volume_based_position_analysis(vol_today, vol_yest, vol_ma5, vol_ma14)
+    price_score = price_result["综合评分"]
+    volume_score = volume_result["综合评分"]
+
+    # 单日放量标记：今日成交额大于5日均额
+    is_volume_spike = vol_today > vol_ma5
+
+    # ========== 短期量价拐点判断 ==========
+    # 多头短期转跌预警：连续两日缩量 + 现价跌破5日线
+    turn_bear_warn = (vol_today < vol_ma5) and (vol_yest < vol_ma5) and (price_today < price_ma5)
+    # 底部短期企稳信号：连续两日放量 + 现价站上5日线
+    turn_bull_signal = (vol_today > vol_ma5) and (vol_yest > vol_ma5) and (price_today > price_ma5)
+
+    # ========== 中期MA14均线拐点+斜率变化提示文案 ==========
+    mid_trend_tip = ""
+    mid_trend_risk = ""
+    slope_change_tip = ""
+
+    # 拐点文案
+    if ma14_top:
+        mid_trend_tip = "【中期预警：MA14由涨转跌，中期上涨趋势见顶，分批减仓】"
+        mid_trend_risk = "中期均线拐头向下，回调风险放大，仓位上限强制下调"
+    if ma14_bottom:
+        mid_trend_tip = "【中期机会：MA14由跌转涨，中期下跌趋势见底，可分批低吸】"
+    if ma14_weak:
+        mid_trend_tip = "【长期弱势：MA14持续向下，大环境空头，优先空仓观望】"
+        mid_trend_risk = "长期均线弱势，禁止重仓参与反弹"
+
+    # 斜率加速/放缓补充提示
+    slope_tips = []
+    if rise_acc:
+        slope_tips.append("【斜率提醒：MA14上涨斜率放大，拉升加速，持有为主】")
+    if rise_slow:
+        slope_tips.append("【斜率提醒：MA14上涨斜率收窄，上涨乏力，逐步减仓】")
+    if fall_acc:
+        slope_tips.append("【斜率提醒：MA14下跌斜率放大，加速杀跌，立刻降仓避险】")
+    if fall_slow:
+        slope_tips.append("【斜率提醒：MA14下跌斜率收窄，抛压衰竭，留意企稳机会】")
+    slope_change_tip = "".join(slope_tips)
+
+    # 趋势全局变量初始化
+    trend_type = "震荡整理"
+    max_allow_pos = 1.0
+    risk_notice = ""
+    w_price, w_volume = 0.4, 0.6
+    turn_tip = ""
+
+    # ===================== 多头分级（现价站上5日线） =====================
+    if price_today > price_ma5:
+        # 二阶强多头：5日线站上14日线，完整多头排列
+        if price_ma5 > price_ma14:
+            trend_type = "二阶多头：放量站稳MA14，积极加仓区" if is_volume_spike else "二阶多头：无量站上MA14"
+            max_allow_pos = 1.0
+            w_price, w_volume = 0.4, 0.6
+            turn_tip = "【多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升】"
+
+            if turn_bear_warn:
+                max_allow_pos = 0.6
+                risk_notice = "短期警告：连续两日成交额萎缩+跌破5日线，上涨趋势短期拐头风险，大幅降仓规避回调！"
+            if ma14_top:
+                max_allow_pos = min(max_allow_pos, 0.4)
+                risk_notice += "；中期MA14拐头向下，双重风险，严格控仓"
+            if ma14_weak:
+                max_allow_pos = min(max_allow_pos, 0.5)
+                risk_notice += "；大周期均线弱势，反弹空间有限，不适合重仓"
+        else:
+            # 一阶突破：仅突破5日线，未站上MA14
+            trend_type = "一阶突破：放量突破5日线，适度加仓区" if is_volume_spike else "一阶突破：无量站上5日线"
+            max_allow_pos = 0.8
+            w_price, w_volume = 0.4, 0.6
+            turn_tip = "【多头纪律：短期反弹趋势，持有为主，放量可小幅加仓】"
+
+            if turn_bear_warn:
+                max_allow_pos = 0.4
+                risk_notice = "短期警告：连续缩量走弱，反弹大概率结束，严控仓位不追加买入"
+            if ma14_top:
+                max_allow_pos = min(max_allow_pos, 0.3)
+                risk_notice += "；中期MA14见顶，反弹持续性差"
+            if ma14_weak:
+                max_allow_pos = min(max_allow_pos, 0.3)
+                risk_notice += "；长期空头环境，反弹仅适合快进快出"
+
+    else:
+        # ===================== 空头分级（现价跌破5日线） =====================
+        w_price, w_volume = 0.6, 0.4
+        turn_tip = "【空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本】"
+
+        # 二档空头：5日线跌破MA14，完整空头排列
+        if price_ma5 < price_ma14:
+            trend_type = "二档空头：均线空头排列，建议空仓观望"
+            max_allow_pos = 0.2
+            risk_notice = "趋势破位二档空头，常规最高仅允许20%底仓，禁止持仓过重"
+
+            if turn_bull_signal:
+                max_allow_pos = 0.35
+                risk_notice += "；短期连续放量企稳，可小仓位试错，不可重仓抄底"
+            if ma14_bottom:
+                max_allow_pos = min(max_allow_pos, 0.45)
+                risk_notice += "；叠加MA14跌转涨，中期底部信号，小仓位布局"
+            if ma14_weak:
+                max_allow_pos = min(max_allow_pos, 0.1)
+                risk_notice += "；大周期持续下行，抄底风险极高，尽量空仓"
+        # 一档空头：仅现价跌破5日线
+        else:
+            trend_type = "一档空头：阴线跌破5日线，半仓封顶"
+            max_allow_pos = 0.5
+            risk_notice = "一档空头跌破5日线，常规仓位上限50%，不可重仓"
+
+            if turn_bull_signal:
+                max_allow_pos = 0.65
+                risk_notice += "；连续两日放量企稳，短期反弹机会，反弹到位及时离场"
+            if ma14_bottom:
+                max_allow_pos = min(max_allow_pos, 0.7)
+                risk_notice += "；MA14拐头向上，中期修复行情，反弹空间扩大"
+            if ma14_weak:
+                max_allow_pos = min(max_allow_pos, 0.3)
+                risk_notice += "；长期均线弱势，反弹高度有限"
+
+    # 加权综合得分
+    base_score = round(price_score * w_price + volume_score * w_volume, 1)
+    final_score = max(0, min(100, base_score))
+
+    # 基础仓位档位划分
+    if final_score >= 90:
+        base_level = "重仓"
+        base_min, base_max = 0.8, 1.0
+    elif final_score >= 70:
+        base_level = "中高仓"
+        base_min, base_max = 0.6, 0.8
+    elif final_score >= 50:
+        base_level = "中等仓"
+        base_min, base_max = 0.4, 0.6
+    elif final_score >= 30:
+        base_level = "轻仓"
+        base_min, base_max = 0.2, 0.4
+    else:
+        base_level = "空仓/观望"
+        base_min, base_max = 0.0, 0.2
+
+    # 趋势硬性上限截断，最终仓位区间
+    real_max = min(base_max, max_allow_pos)
+    real_min = min(base_min, real_max)
+    final_position = f"{real_min * 100:.0f}%~{real_max * 100:.0f}%"
+
+    # ===================== 基础操作判断文案 =====================
+    base_op = ""
+    if price_score >= 50 and volume_score >= 50:
+        if "二阶多头" in trend_type and is_volume_spike:
+            base_op = "买入/持有信号（放量突破MA14多头共振，积极加仓！）"
+        elif "一阶突破" in trend_type and is_volume_spike:
+            base_op = "买入信号（放量突破5日线，可适度加仓）"
+        elif "空头" in trend_type:
+            base_op = "观望信号（价量尚可，但处于下跌均线，严控仓位）"
+        else:
+            base_op = "买入/持有信号（价量共振走强）,想想赚钱的感觉！"
+    elif price_score >= 50 and volume_score < 50:
+        base_op = "观望信号（价强量弱，无量上涨不宜加仓）"
+    elif price_score < 50 and volume_score >= 50:
+        base_op = "观望信号（量强价弱，反弹减仓）"
+    else:
+        base_op = "卖出/空仓信号（价量双弱）, 想想亏钱的日子！"
+
+    # 拼接多层提示：基础操作 + 多空纪律 + 中期拐点提示 + 斜率变化提醒
+    full_op = f"{base_op}\n{turn_tip}\n{mid_trend_tip}\n{slope_change_tip}"
+    if risk_notice:
+        operation = f"{full_op}\n【风险提示：{risk_notice}】"
+    else:
+        operation = full_op
+
+    # 固定统一交易纪律（常量抽离，不重复拼接硬编码）
+    fixed_rule_text = """
+——————统一交易纪律——————
+空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本
+多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升
+操作纪律：
+1.弱势环境赚了就走，不要想着吃一波反弹
+2.强势环境勇敢持股，不要怕回调
+3.低开超过3%，不能瞬间上拉，要赶紧跑，闸刀来了！
+散户心理：涨了想卖（怕跌，损失厌恶），亏了想抗（怕反弹，损失厌恶）
+"""
+    operation += fixed_rule_text
+
+    # ===================== 返回结果字典（全字段对齐，新增斜率模块） =====================
+    res_dict = {
+        # 基础输出
+        "最终综合评分": final_score,
+        "最终仓位等级": base_level,
+        "建议仓位区间": final_position,
+        "操作建议": operation,
+        "价格评分": price_score,
+        "成交量评分": volume_score,
+        "价格维度详情": price_result,
+        "成交量维度详情": volume_result,
+
+        # 趋势扩展信息
+        "当前趋势档位": trend_type,
+        "趋势允许最大仓位": f"{max_allow_pos * 100:.0f}%",
+        "是否单日放量": is_volume_spike,
+        "动态价量权重": {"价格权重": w_price, "成交量权重": w_volume},
+        "均线行情数据": {
+            "现价": round(price_today, 2),
+            "MA5价格": round(price_ma5, 2),
+            "MA14价格": round(price_ma14, 2),
+            "当日成交额": vol_today,
+            "昨日成交额": vol_yest,
+            "5日均成交额": vol_ma5
+        },
+
+        # 短期量价拐点
+        "短期量价拐点预警": {
+            "多头短期转跌(连续缩量破5日线)": turn_bear_warn,
+            "底部短期企稳(连续放量站上5日线)": turn_bull_signal
+        },
+        # 中期MA14拐点状态
+        "中期MA14均线趋势状态": {
+            "MA14长期弱势连续向下": ma14_weak,
+            "MA14由涨转跌见顶拐点": ma14_top,
+            "MA14由跌转涨见底拐点": ma14_bottom
+        },
+        # 新增MA14斜率变化提醒
+        "MA14斜率变化提醒": {
+            "上涨斜率放大加速拉升": rise_acc,
+            "上涨斜率收窄上涨放缓": rise_slow,
+            "下跌斜率放大加速杀跌": fall_acc,
+            "下跌斜率收窄抛压衰竭": fall_slow
+        }
+    }
+
+    # 控制台分层打印分析信息
+    print("===== 价格维度分析结果 =====", price_result)
+    print("===== 成交量维度分析结果 =====", volume_result)
+    print("===== MA14均线趋势+斜率标记 =====", res_dict)
+    return price_result, volume_result, res_dict
+
+
+def zs_dump_list1(stock_code_list, continuous_down=3, slope_threshold=0.02):
+    """
+    批量多股票统计，改用MA16均线斜率(角度)判断趋势拐头
+    :param stock_code_list: 股票代码列表
+    :param continuous_down: 连续向下倾斜周期阈值，判定长期弱势
+    :param slope_threshold: 均线最小倾斜幅度阈值，过滤横盘小幅波动
+    :return: 量价汇总 + 角度判定的3个趋势标记
     """
     today_list = GetSaveStock.get_current_batch(stock_code_list, False)
 
@@ -4442,24 +4974,20 @@ def zs_dump_list1(stock_code_list, continuous_down=3):
     total_price_16 = 0
     total_price_30 = 0
 
-    # 存储每只股票MA16趋势标记，最后统一汇总判断
     stock_weak_list = []
     stock_top_list = []
     stock_bottom_list = []
 
     for stock_code, today_data in zip(stock_code_list, today_list):
-        # 入库当日数据
         GetSaveStock.save_mysql([today_data])
         print("当日行情：--->", today_data)
         history_list = GetSaveStock.get_mysql(stock_code)
         hist_len = len(history_list)
 
-        # 单只临时累加
         single_amo5 = single_amo16 = single_amo30 = 0
         single_price5 = single_price16 = single_price30 = 0
         close_arr = []
 
-        # 一次循环同时统计成交额、价格、收集收盘价
         for idx, item in enumerate(history_list):
             amo = item.get("amo", 0)
             price = item.get("price", 0)
@@ -4476,7 +5004,6 @@ def zs_dump_list1(stock_code_list, continuous_down=3):
                 single_amo30 += amo
                 single_price30 += price
 
-        # 汇总到全局
         total_amo_5 += single_amo5
         total_amo_16 += single_amo16
         total_amo_30 += single_amo30
@@ -4487,57 +5014,62 @@ def zs_dump_list1(stock_code_list, continuous_down=3):
         total_amo += today_data.get("amo", 0)
         total_price += today_data.get("price", 0)
 
-        # 昨日成交额/价格 容错
+        # 昨日、前日成交额容错
         if hist_len >= 2:
-            y_amo = history_list[1].get("amo", 0)
-            y_price = history_list[1].get("price", 0)
-            yesterday_amo += y_amo
-            yesterday_price += y_price
-        # 前日成交额 容错
+            yesterday_amo += history_list[1].get("amo", 0)
+            yesterday_price += history_list[1].get("price", 0)
         if hist_len >= 3:
             day_before_yest_amo += history_list[2].get("amo", 0)
 
-        # ---------------------- 单只股票MA16计算、趋势判断 ----------------------
+        # ==================== 基于均线斜率(角度)判断趋势 ====================
         s_weak = False
         s_top = False
         s_bottom = False
         min_kline_need = 16 + continuous_down
 
         if hist_len >= min_kline_need:
+            # 计算全部MA16序列
             ma16_series = []
             for i in range(15, hist_len):
                 window = close_arr[i - 15: i + 1]
                 ma16_val = sum(window) / 16
                 ma16_series.append(ma16_val)
 
-            # 连续向下弱势判断
+            # 1. 统计连续向下倾斜周期（长期弱势）
             drop_count = 0
             for i in range(len(ma16_series) - 1, 0, -1):
-                if ma16_series[i] < ma16_series[i - 1]:
+                delta = ma16_series[i] - ma16_series[i - 1]
+                # 向下倾斜幅度超过阈值才算有效下跌
+                if delta < -slope_threshold:
                     drop_count += 1
                 else:
                     break
             if drop_count >= continuous_down:
                 s_weak = True
 
-            # 均线拐点判断（至少3根均线）
+            # 2. 用斜率角度判断拐点，至少3根均线
             if len(ma16_series) >= 3:
-                m_prev2 = ma16_series[-3]
-                m_prev1 = ma16_series[-2]
-                m_curr = ma16_series[-1]
-                s_top = (m_prev1 > m_prev2) and (m_curr < m_prev1)
-                s_bottom = (m_prev1 < m_prev2) and (m_curr > m_prev1)
+                m_t2 = ma16_series[-3]
+                m_t1 = ma16_series[-2]
+                m_t0 = ma16_series[-1]
+
+                slope_t1 = m_t1 - m_t2
+                slope_t0 = m_t0 - m_t1
+
+                # MA16由涨转跌：前一段向上倾斜达标，当前向下倾斜达标
+                s_top = (slope_t1 > slope_threshold) and (slope_t0 < -slope_threshold)
+                # MA16由跌转涨：前一段向下倾斜达标，当前向上倾斜达标
+                s_bottom = (slope_t1 < -slope_threshold) and (slope_t0 > slope_threshold)
 
         stock_weak_list.append(s_weak)
         stock_top_list.append(s_top)
         stock_bottom_list.append(s_bottom)
 
-    # 批量汇总标记：只要列表中有任意一只满足，整体标记为True
+    # 批量汇总标记：任意个股满足即返回True
     is_weak_market = any(stock_weak_list)
     ma16_top_signal = any(stock_top_list)
     ma16_bottom_signal = any(stock_bottom_list)
 
-    # 固定除以周期（和你原代码逻辑一致）
     avg_amo5 = total_amo_5 / 5
     avg_amo16 = total_amo_16 / 16
     avg_amo30 = total_amo_30 / 30
@@ -4564,19 +5096,17 @@ def zs_dump_list1(stock_code_list, continuous_down=3):
     )
 
 
-def zs_dump_list(stock_code, continuous_down=3):
+def zs_dump_list(stock_code, continuous_down=3, slope_threshold=0.02):
     """
     单只股票行情统计
-    功能清单：
-    1. 拉取当日行情写入数据库
-    2. 当日/昨日成交额、价格汇总
-    3. 5/16/30周期成交额、价格均值
-    4. MA16连续向下 → 弱势空仓标记 is_weak_market
-    5. MA16涨转跌拐点信号 ma16_top_signal（见顶提醒）
-    6. MA16跌转涨拐点信号 ma16_bottom_signal（见底提醒）
+    MA16趋势改用均线斜率(角度)判断，过滤小幅横盘杂波
     :param stock_code: 个股代码字符串
-    :param continuous_down: MA16连续向下N天判定弱势，默认3
+    :param continuous_down: MA16连续向下倾斜N天判定弱势，默认3
+    :param slope_threshold: 均线最小倾斜幅度阈值，小于该值视为横盘不触发信号
     :return: tuple
+        total_amo, yesterday_amo, avg_amo5, avg_amo16, avg_amo30,
+        total_price, yesterday_price, avg_price5, avg_price16, avg_price30,
+        is_weak_market, ma16_top_signal, ma16_bottom_signal
     """
     stock_code_list = [stock_code]
     today_list = GetSaveStock.get_current_batch(stock_code_list, False)
@@ -4627,43 +5157,48 @@ def zs_dump_list(stock_code, continuous_down=3):
     avg_amo30 = safe_avg(sum_amo30, 30)
 
     avg_price5 = safe_avg(sum_price5, 5)
-    avg_price16 = safe_avg(sum_price16, 16)
+    avg_price16 = safe_avg(sum_price5, 16)
     avg_price30 = safe_avg(sum_price30, 30)
 
-    # ========== MA16均线、拐点、弱势判断模块 ==========
+    # ========== MA16均线、斜率(角度)判断模块 ==========
     is_weak_market = False
     ma16_top_signal = False
     ma16_bottom_signal = False
     min_kline_need = 16 + continuous_down
 
     if hist_len >= min_kline_need:
-        # 计算全部16日均线序列
+        # 滚动计算全部16日均线序列
         ma16_series = []
         for i in range(15, hist_len):
             window = close_arr[i - 15: i + 1]
             ma16_val = sum(window) / 16
             ma16_series.append(ma16_val)
 
-        # 1、连续向下弱势判断
+        # 1、统计连续有效向下倾斜周期（长期弱势）
         drop_count = 0
         for i in range(len(ma16_series) - 1, 0, -1):
-            if ma16_series[i] < ma16_series[i - 1]:
+            delta = ma16_series[i] - ma16_series[i - 1]
+            # 向下倾斜幅度超过阈值才算有效下跌
+            if delta < -slope_threshold:
                 drop_count += 1
             else:
                 break
         if drop_count >= continuous_down:
             is_weak_market = True
 
-        # 2、均线拐点判断：需要至少3根均线（前前、前、当前）判断拐头切换
+        # 2、斜率角度判断拐点：至少3根均线才可对比两段趋势
         if len(ma16_series) >= 3:
-            m_prev2 = ma16_series[-3]  # 倒数第三根均线
-            m_prev1 = ma16_series[-2]  # 倒数第二根均线
-            m_curr = ma16_series[-1]  # 最新当日均线
+            m_t2 = ma16_series[-3]  # T-2
+            m_t1 = ma16_series[-2]  # T-1
+            m_t0 = ma16_series[-1]  # T
 
-            # 前一段上涨，今日拐头向下：涨转跌，见顶提醒
-            ma16_top_signal = (m_prev1 > m_prev2) and (m_curr < m_prev1)
-            # 前一段下跌，今日拐头向上：跌转涨，见底提醒
-            ma16_bottom_signal = (m_prev1 < m_prev2) and (m_curr > m_prev1)
+            slope_t1 = m_t1 - m_t2
+            slope_t0 = m_t0 - m_t1
+
+            # MA16由涨转跌：前一段向上倾斜达标，当前向下倾斜达标
+            ma16_top_signal = (slope_t1 > slope_threshold) and (slope_t0 < -slope_threshold)
+            # MA16由跌转涨：前一段向下倾斜达标，当前向上倾斜达标
+            ma16_bottom_signal = (slope_t1 < -slope_threshold) and (slope_t0 > slope_threshold)
 
     return (
         total_amo, yesterday_amo, avg_amo5, avg_amo16, avg_amo30,
@@ -4825,13 +5360,15 @@ def runRank():
 
 
 def timerRun():
-    # Wechat.send_wechat_thsbks(thsBK.fetch_and_parse_bk_list())
-    # Wechat.send_wechat_bks(LoopBK.fetch_and_parse_bk_list())
-    # loop = loop_stock()
-    # Wechat.send_wechat_stock(loop[0], loop[1])
-    # Wechat.send_wechat_jrj(FocusReview.get_jrj_view())
+    Wechat.send_wechat_thsbks(thsBK.fetch_and_parse_bk_list())
+    Wechat.send_wechat_bks(LoopBK.fetch_and_parse_bk_list())
+    loop = loop_stock()
+    Wechat.send_wechat_stock(loop[0], loop[1])
+    Wechat.send_wechat_jrj(FocusReview.get_jrj_view())
     Wechat.send_wechat_tips(zs_dump_list1(['sh000001', 'sz399001']), FocusReview.get_focus_review())
-    Wechat.send_wechat_tips(zs_dump_list('sh000002'), FocusReview.get_focus_review())
+    Wechat.send_wechat_tips(zs_dump_list('sh000001'), FocusReview.get_focus_review())
+    Wechat.send_wechat_tips1(zs_calc_stock_pool('sh000001'), FocusReview.get_focus_review())
+    # Wechat.send_wechat_tips1(zs_calc_stock_pool('sh000002'), FocusReview.get_focus_review())
 
 
 # runInd()

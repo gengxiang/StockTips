@@ -1,5 +1,7 @@
 # coding=gbk
 import time
+from datetime import datetime
+from typing import List, Tuple, Dict, Any, NamedTuple, Optional
 
 import yaml
 from wxauto import *
@@ -92,24 +94,83 @@ def volume_based_position_analysis(current, yesterday, ma5, ma16):
     }
 
 
-def calc_reasonable_position2(total_amo, ma16_weak=False, ma16_top=False, ma16_bottom=False):
+def calc_reasonable_position1(pool_metrics) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
     """
     多空分级严格风控：下跌逐级限仓，放量突破均线逐级放开加仓
-    新增能力：
-        1. 短期量价反转识别（连续缩量转跌/连续放量转涨）
-        2. 中期16日均线趋势拐点识别（涨转跌见顶/跌转涨见底）
-        3. MA16长期持续向下弱势空仓强制约束
-        4. 底部固定全套交易纪律输出
     入参说明：
-        total_amo: [今日成交额,昨日成交额,5日均额,16日均额,30日均额,今日价,昨日价,5日均价,16日均价,30日均价]
-        ma16_weak: bool MA16连续向下，长期弱势环境
-        ma16_top: bool MA16由涨转跌（中期见顶拐点）
-        ma16_bottom: bool MA16由跌转涨（中期见底拐点）
-    :return: price_result, volume_result, 结果字典
+        pool_metrics: StockPoolMetrics对象，由zs_calc_stock_pool返回
     """
-    # 拆分行情数据
-    vol_today, vol_yest, vol_ma5, vol_ma16, vol_ma30 = total_amo[0:5]
-    price_today, price_yest, price_ma5, price_ma16, price_ma30 = total_amo[5:10]
+    # ---------------------- 内部常量 ----------------------
+    WEIGHT_PRICE_BULL = 0.4
+    WEIGHT_VOLUME_BULL = 0.6
+    WEIGHT_PRICE_BEAR = 0.6
+    WEIGHT_VOLUME_BEAR = 0.4
+    SPIKE_RATIO = 1.15
+    AMP_DROP_DEDUCT_THRESHOLD = -2.5
+    AMP_DEDUCT_SCORE = 12
+
+    TRADE_RULE_TEXT = """
+---------------
+空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本
+多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升
+操作纪律；
+1.弱势环境赚了就走，不要想着吃一波反弹
+2.强势环境勇敢持股，不要怕回调
+3.低开超过3%，不能瞬间上拉，要赶紧跑，闸刀来了！
+散户心理： 涨了想卖（怕跌，损失厌恶），亏了想抗（怕反弹，损失厌恶）
+---------------
+    """
+
+    # ========== 内嵌通用单项打分函数（价、成交额共用） ==========
+    def volume_based_position_analysis(val_today, val_yest, ma5, ma16):
+        score = 50.0
+        # MA16作为中期分水岭
+        if val_today > ma16:
+            score += 18
+            if val_today > ma5:
+                score += 12
+            else:
+                score -= 8
+        else:
+            score -= 18
+            if val_today < ma5:
+                score -= 12
+            else:
+                score += 8
+        # 对比昨日强弱微调
+        if val_today > val_yest:
+            score += 4
+        elif val_today < val_yest:
+            score -= 4
+        score = max(0.0, min(100.0, score))
+        return {"综合评分": round(score, 2)}
+
+    # ========== 从pool_metrics读取所有属性【已对齐你zs_calc_stock_pool字段】 ==========
+    vol_today = pool_metrics.total_amo
+    vol_yest = pool_metrics.yesterday_amo
+    vol_ma5 = pool_metrics.avg_amo5
+    vol_ma16 = pool_metrics.avg_amo14
+    vol_ma30 = pool_metrics.avg_amo30
+
+    price_today = pool_metrics.total_price
+    price_yest = pool_metrics.yesterday_price
+    price_ma5 = pool_metrics.avg_price5
+    price_ma16 = pool_metrics.avg_price14
+    price_ma30 = pool_metrics.avg_price30
+
+    # =================【关键修复：读取结构体 ma14_xxx】=================
+    ma16_weak = pool_metrics.ma14_weak
+    ma16_top = pool_metrics.ma14_top
+    ma16_bottom = pool_metrics.ma14_bottom
+    # =================================================================
+
+    rise_acc = pool_metrics.rise_acc
+    rise_slow = pool_metrics.rise_slow
+    fall_acc = pool_metrics.fall_acc
+    fall_slow = pool_metrics.fall_slow
+    is_low_liquid = pool_metrics.is_low_liquid
+    has_crash_today = pool_metrics.has_crash_today
+    amp = pool_metrics.amp
 
     # 量价打分
     price_result = volume_based_position_analysis(price_today, price_yest, price_ma5, price_ma16)
@@ -117,60 +178,46 @@ def calc_reasonable_position2(total_amo, ma16_weak=False, ma16_top=False, ma16_b
     price_score = price_result["综合评分"]
     volume_score = volume_result["综合评分"]
 
-    # 单日放量标记：今日成交额大于5日均额
-    is_volume_spike = vol_today > vol_ma5
+    # 单日有效放量
+    is_volume_spike = vol_today > vol_ma5 * SPIKE_RATIO
 
-    # ========== 短期量价拐点（原有逻辑） ==========
-    # 多头短期转跌预警：连续两日缩量 + 现价跌破5日线
+    # 短期量价拐点
     turn_bear_warn = (vol_today < vol_ma5) and (vol_yest < vol_ma5) and (price_today < price_ma5)
-    # 底部短期企稳信号：连续两日放量 + 现价站上5日线
     turn_bull_signal = (vol_today > vol_ma5) and (vol_yest > vol_ma5) and (price_today > price_ma5)
 
-    # ========== 中期MA16均线拐点（新增外部传入趋势标记） ==========
+    # 中期均线提示文案（按你要求）
     mid_trend_tip = ""
-    mid_trend_risk = ""
     if ma16_top:
-        mid_trend_tip = "【中期预警：16日均线由涨转跌，中期上涨趋势见顶，分批减仓】"
-        mid_trend_risk = "中期均线拐头向下，回调风险放大，仓位上限强制下调"
+        mid_trend_tip = "\n【中期预警：16日均线拐头向下，上涨趋势见顶，仓位上限强制下调】"
     if ma16_bottom:
-        mid_trend_tip = "【中期机会：16日均线由跌转涨，中期下跌趋势见底，可分批低吸】"
+        mid_trend_tip = "\n【中期机会：16日均线由跌转涨，中期下跌趋势见底，可分批低吸】"
     if ma16_weak:
-        mid_trend_tip = "【长期弱势：16日均线持续向下，大环境空头，优先空仓观望】"
-        mid_trend_risk = "长期均线弱势，禁止重仓参与反弹"
+        mid_trend_tip = "\n【长期弱势：16日均线持续向下，大环境空头，禁止重仓参与反弹】"
 
-    # 趋势变量初始化
     trend_type = "震荡整理"
     max_allow_pos = 1.0
     risk_notice = ""
-    w_price, w_volume = 0.4, 0.6
-    turn_tip = ""  # 短期量价反转提示文案
+    w_price, w_volume = WEIGHT_PRICE_BULL, WEIGHT_VOLUME_BULL
+    turn_tip = ""
 
-    # ===================== 多头分级（现价站上5日线） =====================
     if price_today > price_ma5:
-        # 二阶强多头：5日线站上16日线，多头排列
         if price_ma5 > price_ma16:
             trend_type = "二阶多头：放量站稳16日线，积极加仓区" if is_volume_spike else "二阶多头：无量站上16日线"
             max_allow_pos = 1.0
-            w_price, w_volume = 0.4, 0.6
-            turn_tip = "【多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升】"
+            turn_tip = "\n【多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升】"
 
-            # 短期缩量破5日线预警 → 降仓
             if turn_bear_warn:
                 max_allow_pos = 0.6
                 risk_notice = "短期警告：连续两日成交额萎缩+跌破5日线，上涨趋势短期拐头风险，大幅降仓规避回调！"
-            # 叠加中期均线见顶拐点，进一步压缩仓位
             if ma16_top:
                 max_allow_pos = min(max_allow_pos, 0.4)
                 risk_notice += "；中期16日均线拐头向下，双重风险，严格控仓"
-            # 长期弱势环境直接限制最高半仓
             if ma16_weak:
                 max_allow_pos = min(max_allow_pos, 0.5)
                 risk_notice += "；大周期均线弱势，反弹空间有限，不适合重仓"
         else:
-            # 一阶突破：仅突破5日线，未站上16日线
             trend_type = "一阶突破：放量突破5日线，适度加仓区" if is_volume_spike else "一阶突破：无量站上5日线"
             max_allow_pos = 0.8
-            w_price, w_volume = 0.4, 0.6
             turn_tip = ""
 
             if turn_bear_warn:
@@ -182,31 +229,24 @@ def calc_reasonable_position2(total_amo, ma16_weak=False, ma16_top=False, ma16_b
             if ma16_weak:
                 max_allow_pos = min(max_allow_pos, 0.3)
                 risk_notice += "；长期空头环境，反弹仅适合快进快出"
-
     else:
-        # ===================== 空头分级（现价跌破5日线） =====================
-        w_price, w_volume = 0.6, 0.4
-        turn_tip = "【空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本】"
+        w_price, w_volume = WEIGHT_PRICE_BEAR, WEIGHT_VOLUME_BEAR
+        turn_tip = "\n【空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本】"
 
-        # 二档空头：5日线跌破16日线，完整空头排列
         if price_ma5 < price_ma16:
             trend_type = "二档空头：均线空头排列，建议空仓观望"
             max_allow_pos = 0.2
             risk_notice = "趋势破位二档空头，常规最高仅允许20%底仓，禁止持仓过重"
 
-            # 短期放量企稳，小幅放宽
             if turn_bull_signal:
                 max_allow_pos = 0.35
                 risk_notice += "；短期连续放量企稳，可小仓位试错，不可重仓抄底"
-            # 中期均线见底拐头，适度提升试错仓位
             if ma16_bottom:
                 max_allow_pos = min(max_allow_pos, 0.45)
                 risk_notice += "；叠加16日均线跌转涨，中期底部信号，小仓位布局"
-            # 长期弱势强制压底仓
             if ma16_weak:
                 max_allow_pos = min(max_allow_pos, 0.1)
                 risk_notice += "；大周期持续下行，抄底风险极高，尽量空仓"
-        # 一档空头：仅现价跌破5日线
         else:
             trend_type = "一档空头：阴线跌破5日线，半仓封顶"
             max_allow_pos = 0.5
@@ -222,11 +262,15 @@ def calc_reasonable_position2(total_amo, ma16_weak=False, ma16_top=False, ma16_b
                 max_allow_pos = min(max_allow_pos, 0.3)
                 risk_notice += "；长期均线弱势，反弹高度有限"
 
-    # 加权综合得分
-    base_score = round(price_score * w_price + volume_score * w_volume, 1)
-    final_score = max(0, min(100, base_score))
+    # 单日大跌自动扣分
+    if amp < AMP_DROP_DEDUCT_THRESHOLD:
+        price_score = max(0, price_score - AMP_DEDUCT_SCORE)
 
-    # 基础仓位档位
+    # 综合加权得分
+    base_score = round(price_score * w_price + volume_score * w_volume, 1)
+    final_score = max(0.0, min(100.0, base_score))
+
+    # 基础档位
     if final_score >= 90:
         base_level = "重仓"
         base_min, base_max = 0.8, 1.0
@@ -243,12 +287,14 @@ def calc_reasonable_position2(total_amo, ma16_weak=False, ma16_top=False, ma16_b
         base_level = "空仓/观望"
         base_min, base_max = 0.0, 0.2
 
-    # 趋势硬性上限截断
+    # 保证下限≤上限
     real_max = min(base_max, max_allow_pos)
     real_min = min(base_min, real_max)
+    if real_min > real_max:
+        real_min = real_max
     final_position = f"{real_min * 100:.0f}%~{real_max * 100:.0f}%"
 
-    # ===================== 操作建议 =====================
+    # 动态操作文案
     base_op = ""
     if price_score >= 50 and volume_score >= 50:
         if "二阶多头" in trend_type and is_volume_spike:
@@ -258,38 +304,23 @@ def calc_reasonable_position2(total_amo, ma16_weak=False, ma16_top=False, ma16_b
         elif "空头" in trend_type:
             base_op = "观望信号（价量尚可，但处于下跌均线，严控仓位）"
         else:
-            base_op = "买入/持有信号（价量共振走强）,想想赚钱的感觉！"
+            base_op = "买入/持有信号（价量共振走强）"
     elif price_score >= 50 and volume_score < 50:
         base_op = "观望信号（价强量弱，无量上涨不宜加仓）"
     elif price_score < 50 and volume_score >= 50:
         base_op = "观望信号（量强价弱，反弹减仓）"
     else:
-        base_op = "卖出/空仓信号（价量双弱）, 想想亏钱的日子！"
+        base_op = "卖出/空仓信号（价量双弱）"
 
-    # 拼接基础内容
     full_op = f"{base_op}{turn_tip}{mid_trend_tip}"
     if risk_notice:
-        operation = f"{full_op}【风险提示：{risk_notice}】"
+        operation = f"{full_op}\n【风险提示：{risk_notice}】\n"
     else:
-        operation = full_op
+        operation = f"{full_op}\n"
+    operation += TRADE_RULE_TEXT
 
-    # ===================== 固定追加全套交易纪律（新增固定段） =====================
-    fixed_rule_text = """
-——————统一交易纪律——————
-空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本
-多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升
-操作纪律；
-1.弱势环境赚了就走，不要想着吃一波反弹
-2.强势环境勇敢持股，不要怕回调
-3、低开超过3%，不能瞬间上拉，要赶紧跑，闸刀来了！
-散户心理： 涨了想卖（怕跌，损失厌恶），亏了想抗（怕反弹，损失厌恶）
-"""
-    # 固定拼接到操作建议末尾
-    operation = operation + fixed_rule_text
-
-    # ===================== 返回字典：原版字段全部保留 + 新增均线趋势拐点 =====================
+    # 输出字典
     res_dict = {
-        # 原版基础输出
         "最终综合评分": final_score,
         "最终仓位等级": base_level,
         "建议仓位区间": final_position,
@@ -298,8 +329,6 @@ def calc_reasonable_position2(total_amo, ma16_weak=False, ma16_top=False, ma16_b
         "成交量评分": volume_score,
         "价格维度详情": price_result,
         "成交量维度详情": volume_result,
-
-        # 趋势扩展
         "当前趋势档位": trend_type,
         "趋势允许最大仓位": f"{max_allow_pos * 100:.0f}%",
         "是否单日放量": is_volume_spike,
@@ -312,13 +341,312 @@ def calc_reasonable_position2(total_amo, ma16_weak=False, ma16_top=False, ma16_b
             "昨日成交额": vol_yest,
             "5日均成交额": vol_ma5
         },
-
-        # 短期量价拐点
         "短期量价拐点预警": {
             "多头短期转跌(连续缩量破5日线)": turn_bear_warn,
             "底部短期企稳(连续放量站上5日线)": turn_bull_signal
         },
-        # 新增中期MA16均线趋势状态
+        "中期MA16均线趋势状态": {
+            "MA16长期弱势连续向下": ma16_weak,
+            "MA16由涨转跌见顶拐点": ma16_top,
+            "MA16由跌转涨见底拐点": ma16_bottom
+        }
+    }
+
+    return price_result, volume_result, res_dict
+
+
+# 增加默认参数，不传日期自动取今日
+def send_wechat_tips1(pool_metrics, review_url: str, msg_today_str: str = None):
+    # 空数据拦截
+    if pool_metrics is None:
+        send_wechat("指数数据获取失败，无法生成监控简报")
+        return
+
+    if msg_today_str is None:
+        msg_today_str = datetime.now().strftime("%Y-%m-%d")
+
+    _, _, dot = calc_reasonable_position1(pool_metrics)
+    vol_today = pool_metrics.total_amo
+    vol_yest = pool_metrics.yesterday_amo
+    cha1 = vol_today - vol_yest
+    cha2 = vol_yest - vol_today
+
+    # 全部字段使用get兜底，杜绝KeyError
+    liq_status = dot.get("流动性状态", "未知")
+    score = dot.get("最终综合评分", 0)
+    level = dot.get("最终仓位等级", "无")
+    pos_range = dot.get("建议仓位区间", "无")
+    op_tip = dot.get("操作建议", "暂无操作建议")
+
+    fixed_rule_text = """
+    ---------------
+    空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本
+    多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升
+    操作纪律；
+    1.弱势环境赚了就走，不要想着吃一波反弹
+    2.强势环境勇敢持股，不要怕回调
+    3.低开超过3%，不能瞬间上拉，要赶紧跑，闸刀来了！
+    散户心理： 涨了想卖（怕跌，损失厌恶），亏了想抗（怕反弹，损失厌恶）
+    ---------------
+    """
+
+    if vol_today >= vol_yest:
+        msg = (
+            f"【指数大盘监控】{msg_today_str}\n"
+            f"全池合计成交额：{vol_today / 10000:.2f}亿\n"
+            f"较昨日放量：{cha1 / 10000:.2f}亿\n"
+            f"市场流动性：{liq_status}\n"
+            f"综合评分：{score} | 仓位等级：{level}\n"
+            f"建议仓位区间：{pos_range}\n"
+            f"操作建议：{op_tip}"
+
+        )
+    else:
+        msg = (
+            f"【指数大盘监控】{msg_today_str}\n"
+            f"全池合计成交额：{vol_today / 10000:.2f}亿\n"
+            f"较昨日缩量：{cha2 / 10000:.2f}亿\n"
+            f"市场流动性：{liq_status}\n"
+            f"综合评分：{score} | 仓位等级：{level}\n"
+            f"建议仓位区间：{pos_range}\n"
+            f"操作建议：{op_tip}"
+        )
+    send_wechat(msg)
+
+
+def calc_reasonable_position2(
+        total_amo: list,
+        ma16_weak: bool = False,
+        ma16_top: bool = False,
+        ma16_bottom: bool = False,
+        amp: float = 0.0,
+        enable_debug_print: bool = False
+) -> Tuple[Dict[str, Any], Dict[str, Any], Dict[str, Any]]:
+    """
+    多空分级严格风控：下跌逐级限仓，放量突破均线逐级放开加仓
+    入参说明：
+        total_amo: [今日成交额,昨日成交额,5日均额,16日均额,30日均值,今日价,昨日价,5日均价,16日均价,30日均价]
+        ma16_weak: MA16连续向下，长期弱势环境
+        ma16_top: MA16由涨转跌，中期见顶拐点
+        ma16_bottom: MA16由跌转涨，中期见底拐点
+        amp: 当日涨跌幅百分比，用于极端大跌扣分
+        enable_debug_print: 本地调试打印开关
+    """
+    # ---------------------- 常量全部内嵌在函数内部 ----------------------
+    VOL_SPIKE_RATIO = 1.15
+    WEIGHT_PRICE_BULL = 0.4
+    WEIGHT_VOL_BULL = 0.6
+    WEIGHT_PRICE_BEAR = 0.6
+    WEIGHT_VOL_BEAR = 0.4
+    AMP_DROP_DEDUCT_THRESHOLD = -2.5
+    AMP_DEDUCT_SCORE = 12
+
+    TRADE_RULE_TEXT = """
+---------------
+空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本
+多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升
+操作纪律；
+1.弱势环境赚了就走，不要想着吃一波反弹
+2.强势环境勇敢持股，不要怕回调
+3.低开超过3%，不能瞬间上拉，要赶紧跑，闸刀来了！
+散户心理： 涨了想卖（怕跌，损失厌恶），亏了想抗（怕反弹，损失厌恶）
+---------------
+    """
+
+    # 【内嵌通用单项打分函数，消除外部依赖】
+    def volume_based_position_analysis(val_today, val_yest, ma5, ma16):
+        score = 50.0
+        if val_today > ma16:
+            score += 18
+            if val_today > ma5:
+                score += 12
+            else:
+                score -= 8
+        else:
+            score -= 18
+            if val_today < ma5:
+                score -= 12
+            else:
+                score += 8
+        if val_today > val_yest:
+            score += 4
+        elif val_today < val_yest:
+            score -= 4
+        score = max(0.0, min(100.0, score))
+        return {"综合评分": round(score, 2)}
+
+    if len(total_amo) < 10:
+        raise ValueError("total_amo 长度不足，必须传入10个数值")
+    try:
+        vol_today, vol_yest, vol_ma5, vol_ma16, vol_ma30 = total_amo[0:5]
+        price_today, price_yest, price_ma5, price_ma16, price_ma30 = total_amo[5:10]
+    except Exception as e:
+        raise ValueError("total_amo 内部必须全部为数字") from e
+
+    price_result = volume_based_position_analysis(price_today, price_yest, price_ma5, price_ma16)
+    volume_result = volume_based_position_analysis(vol_today, vol_yest, vol_ma5, vol_ma16)
+    price_score = price_result["综合评分"]
+    volume_score = volume_result["综合评分"]
+
+    is_volume_spike = vol_today > vol_ma5 * VOL_SPIKE_RATIO
+
+    turn_bear_warn = (vol_today < vol_ma5) and (vol_yest < vol_ma5) and (price_today < price_ma5)
+    turn_bull_signal = (vol_today > vol_ma5) and (vol_yest > vol_ma5) and (price_today > price_ma5)
+
+    mid_trend_tip = ""
+    if ma16_top:
+        mid_trend_tip = "\n【中期预警：16日均线拐头向下，上涨趋势见顶，仓位上限强制下调】"
+    if ma16_bottom:
+        mid_trend_tip = "\n【中期机会：16日均线由跌转涨，中期下跌趋势见底，可分批低吸】"
+    if ma16_weak:
+        mid_trend_tip = "\n【长期弱势：16日均线持续向下，大环境空头，禁止重仓参与反弹】"
+
+    trend_type = "震荡整理"
+    max_allow_pos = 1.0
+    risk_notice = ""
+    w_price, w_volume = WEIGHT_PRICE_BULL, WEIGHT_VOL_BULL
+    turn_tip = ""
+
+    if price_today > price_ma5:
+        if price_ma5 > price_ma16:
+            trend_type = "二阶多头：放量站稳16日线，积极加仓区" if is_volume_spike else "二阶多头：无量站上16日线"
+            max_allow_pos = 1.0
+            turn_tip = "\n【多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升】"
+
+            if turn_bear_warn:
+                max_allow_pos = 0.6
+                risk_notice = "短期警告：连续两日成交额萎缩+跌破5日线，上涨趋势短期拐头风险，大幅降仓规避回调！"
+            if ma16_top:
+                max_allow_pos = min(max_allow_pos, 0.4)
+                risk_notice += "；中期16日均线拐头向下，双重风险，严格控仓"
+            if ma16_weak:
+                max_allow_pos = min(max_allow_pos, 0.5)
+                risk_notice += "；大周期均线弱势，反弹空间有限，不适合重仓"
+        else:
+            trend_type = "一阶突破：放量突破5日线，适度加仓区" if is_volume_spike else "一阶突破：无量站上5日线"
+            max_allow_pos = 0.8
+            turn_tip = ""
+
+            if turn_bear_warn:
+                max_allow_pos = 0.4
+                risk_notice = "短期警告：连续缩量走弱，反弹大概率结束，严控仓位不追加买入"
+            if ma16_top:
+                max_allow_pos = min(max_allow_pos, 0.3)
+                risk_notice += "；中期均线见顶，反弹持续性差"
+            if ma16_weak:
+                max_allow_pos = min(max_allow_pos, 0.3)
+                risk_notice += "；长期空头环境，反弹仅适合快进快出"
+    else:
+        w_price, w_volume = WEIGHT_PRICE_BEAR, WEIGHT_VOL_BEAR
+        turn_tip = "\n【空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本】"
+
+        if price_ma5 < price_ma16:
+            trend_type = "二档空头：均线空头排列，建议空仓观望"
+            max_allow_pos = 0.2
+            risk_notice = "趋势破位二档空头，常规最高仅允许20%底仓，禁止持仓过重"
+
+            if turn_bull_signal:
+                max_allow_pos = 0.35
+                risk_notice += "；短期连续放量企稳，可小仓位试错，不可重仓抄底"
+            if ma16_bottom:
+                max_allow_pos = min(max_allow_pos, 0.45)
+                risk_notice += "；叠加16日均线跌转涨，中期底部信号，小仓位布局"
+            if ma16_weak:
+                max_allow_pos = min(max_allow_pos, 0.1)
+                risk_notice += "；大周期持续下行，抄底风险极高，尽量空仓"
+        else:
+            trend_type = "一档空头：阴线跌破5日线，半仓封顶"
+            max_allow_pos = 0.5
+            risk_notice = "一档空头跌破5日线，常规仓位上限50%，不可重仓"
+
+            if turn_bull_signal:
+                max_allow_pos = 0.65
+                risk_notice += "；连续两日放量企稳，短期反弹机会，反弹到位及时离场"
+            if ma16_bottom:
+                max_allow_pos = min(max_allow_pos, 0.7)
+                risk_notice += "；16日均线拐头向上，中期修复行情，反弹空间扩大"
+            if ma16_weak:
+                max_allow_pos = min(max_allow_pos, 0.3)
+                risk_notice += "；长期均线弱势，反弹高度有限"
+
+    if amp < AMP_DROP_DEDUCT_THRESHOLD:
+        price_score = max(0, price_score - AMP_DEDUCT_SCORE)
+
+    base_score = round(price_score * w_price + volume_score * w_volume, 1)
+    final_score = max(0.0, min(100.0, base_score))
+
+    if final_score >= 90:
+        base_level = "重仓"
+        base_min, base_max = 0.8, 1.0
+    elif final_score >= 70:
+        base_level = "中高仓"
+        base_min, base_max = 0.6, 0.8
+    elif final_score >= 50:
+        base_level = "中等仓"
+        base_min, base_max = 0.4, 0.6
+    elif final_score >= 30:
+        base_level = "轻仓"
+        base_min, base_max = 0.2, 0.4
+    else:
+        base_level = "空仓/观望"
+        base_min, base_max = 0.0, 0.2
+
+    real_max = min(base_max, max_allow_pos)
+    real_min = min(base_min, real_max)
+    if real_min > real_max:
+        real_min = real_max
+    final_position = f"{real_min * 100:.0f}%~{real_max * 100:.0f}%"
+
+    base_op = ""
+    if price_score >= 50 and volume_score >= 50:
+        if "二阶多头" in trend_type and is_volume_spike:
+            base_op = "买入/持有信号（放量突破16日线多头共振，积极加仓！）"
+        elif "一阶突破" in trend_type and is_volume_spike:
+            base_op = "买入信号（放量突破5日线，可适度加仓）"
+        elif "空头" in trend_type:
+            base_op = "观望信号（价量尚可，但处于下跌均线，严控仓位）"
+        else:
+            base_op = "买入/持有信号（价量共振走强）"
+    elif price_score >= 50 and volume_score < 50:
+        base_op = "观望信号（价强量弱，无量上涨不宜加仓）"
+    elif price_score < 50 and volume_score >= 50:
+        base_op = "观望信号（量强价弱，反弹减仓）"
+    else:
+        base_op = "卖出/空仓信号（价量双弱）"
+
+    full_op = f"{base_op}{turn_tip}{mid_trend_tip}"
+    # ========== 修复BUG：补全if分支赋值 ==========
+    if risk_notice:
+        operation = f"{full_op}\n【风险提示：{risk_notice}】\n"
+    else:
+        operation = f"{full_op}\n"
+    operation += TRADE_RULE_TEXT
+
+    res_dict = {
+        "最终综合评分": final_score,
+        "最终仓位等级": base_level,
+        "建议仓位区间": final_position,
+        "操作建议": operation,
+        "价格评分": price_score,
+        "成交量评分": volume_score,
+        "价格维度详情": price_result,
+        "成交量维度详情": volume_result,
+        "当前趋势档位": trend_type,
+        "趋势允许最大仓位": f"{max_allow_pos * 100:.0f}%",
+        "是否单日放量": is_volume_spike,
+        "动态价量权重": {"价格权重": w_price, "成交量权重": w_volume},
+        "均线行情数据": {
+            "现价": round(price_today, 2),
+            "MA5价格": round(price_ma5, 2),
+            "MA16价格": round(price_ma16, 2),
+            "当日成交额": vol_today,
+            "昨日成交额": vol_yest,
+            "5日均成交额": vol_ma5
+        },
+        "短期量价拐点预警": {
+            "多头短期转跌(连续缩量破5日线)": turn_bear_warn,
+            "底部短期企稳(连续放量站上5日线)": turn_bull_signal
+        },
         "中期MA16均线趋势状态": {
             "MA16长期弱势连续向下": ma16_weak,
             "MA16由涨转跌见顶拐点": ma16_top,
@@ -328,173 +656,8 @@ def calc_reasonable_position2(total_amo, ma16_weak=False, ma16_top=False, ma16_b
 
     print("===== 价格维度分析结果 =====", price_result)
     print("===== 成交量维度分析结果 =====", volume_result)
-    print("===== 中期16日均线趋势标记 =====", res_dict["中期MA16均线趋势状态"])
-    return price_result, volume_result, res_dict
+    print("===== 最终综合结果 =====", res_dict)
 
-
-def calc_reasonable_position1(total_amo):
-    """
-    多空分级严格风控：下跌逐级限仓，放量突破均线逐级放开加仓
-    新增：趋势反转灵敏识别【连续3日缩量转跌/连续3日放量转涨，拐点更谨慎】、多空专属持仓纪律提示
-    :param total_amo: [今日成交额,昨日成交额,前日成交额,5日均额,16日均额,30日均额,今日价,昨日价,5日均价,16日均价,30日均价]
-    :return: price_result, volume_result, 结果字典
-    """
-    # 拆分行情数据（新增前日成交额 vol_day_before_yest）
-    vol_today, vol_yest, vol_day_before_yest, vol_ma5, vol_ma16, vol_ma30 = total_amo[0:6]
-    price_today, price_yest, price_ma5, price_ma16, price_ma30 = total_amo[6:11]
-
-    # 量价打分
-    price_result = volume_based_position_analysis(price_today, price_yest, price_ma5, price_ma16)
-    volume_result = volume_based_position_analysis(vol_today, vol_yest, vol_ma5, vol_ma16)
-    price_score = price_result["综合评分"]
-    volume_score = volume_result["综合评分"]
-
-    # 单日放量标记：今日成交额大于5日均额
-    is_volume_spike = vol_today > vol_ma5
-
-    # ========== 【修改：连续3日判定，拐点更谨慎】 ==========
-    # 1. 多头转跌预警：连续3日缩量 + 现价跌破5日线，上涨趋势末端拐头
-    turn_bear_warn = (vol_today < vol_ma5) and (vol_yest < vol_ma5) and (vol_day_before_yest < vol_ma5) and (
-                price_today < price_ma5)
-    # 2. 底部反转企稳：连续3日放量 + 现价站上5日线，下跌趋势见底反弹
-    turn_bull_signal = (vol_today > vol_ma5) and (vol_yest > vol_ma5) and (vol_day_before_yest > vol_ma5) and (
-                price_today > price_ma5)
-
-    # 趋势变量初始化
-    trend_type = "震荡整理"
-    max_allow_pos = 1.0
-    risk_notice = ""
-    w_price, w_volume = 0.4, 0.6
-    turn_tip = ""  # 反转专属提示文案
-
-    # ===================== 多头突破分级（上涨放量加仓逻辑） =====================
-    if price_today > price_ma5:
-        # 二阶强多头：站稳5日线 + 5日线站上16日线，完整多头排列
-        if price_ma5 > price_ma16:
-            trend_type = "二阶多头：放量站稳16日线，积极加仓区" if is_volume_spike else "二阶多头：无量站上16日线"
-            max_allow_pos = 1.0
-            w_price, w_volume = 0.4, 0.6
-            # 多头基础持仓纪律
-            turn_tip = "【多头纪律：趋势完好耐心持股，不要小幅盈利频繁止盈踏空主升】"
-            # 多头末尾拐头，反转预警，强制降低仓位上限
-            if turn_bear_warn:
-                max_allow_pos = 0.6
-                risk_notice = "警告：连续三日成交额萎缩+跌破5日线，上涨趋势有拐头风险，大幅降仓规避回调！"
-        else:
-            # 一阶突破：仅突破5日线，未站上16日线
-            trend_type = "一阶突破：放量突破5日线，适度加仓区" if is_volume_spike else "一阶突破：无量站上5日线"
-            max_allow_pos = 0.8
-            w_price, w_volume = 0.4, 0.6
-            turn_tip = ""
-            if turn_bear_warn:
-                max_allow_pos = 0.4
-                risk_notice = "警告：连续三日缩量走弱，反弹大概率结束，严控仓位不追加买入"
-    else:
-        # ===================== 空头分级（下跌严格限仓） =====================
-        w_price, w_volume = 0.6, 0.4
-        # 空头统一纪律
-        turn_tip = "【空头纪律：所有反弹均逢高兑现，不幻想主升行情，禁止加仓摊薄成本】"
-        # 二档空头：跌破5日线 + 5日线跌破16日线，趋势走坏
-        if price_ma5 < price_ma16:
-            trend_type = "二档空头：均线空头排列，建议空仓观望"
-            max_allow_pos = 0.2
-            risk_notice = "趋势破位二档空头，最高仅允许20%底仓，禁止持仓过重"
-            # 出现连续3日放量企稳拐点，小幅放宽仓位底线
-            if turn_bull_signal:
-                max_allow_pos = 0.35
-                risk_notice += "；连续三日放量企稳信号出现，可小仓位试错，不可重仓抄底"
-        # 一档空头：仅现价跌破5日线
-        else:
-            trend_type = "一档空头：阴线跌破5日线，半仓封顶"
-            max_allow_pos = 0.5
-            risk_notice = "一档空头跌破5日线，仓位上限50%，不可重仓"
-            if turn_bull_signal:
-                max_allow_pos = 0.65
-                risk_notice += "；连续三日放量企稳，短期反弹机会，反弹到位及时离场"
-
-    # 加权综合得分
-    base_score = round(price_score * w_price + volume_score * w_volume, 1)
-    final_score = max(0, min(100, base_score))
-
-    # 基础仓位档位（沿用原版分数阈值）
-    if final_score >= 90:
-        base_level = "重仓"
-        base_min, base_max = 0.8, 1.0
-    elif final_score >= 70:
-        base_level = "中高仓"
-        base_min, base_max = 0.6, 0.8
-    elif final_score >= 50:
-        base_level = "中等仓"
-        base_min, base_max = 0.4, 0.6
-    elif final_score >= 30:
-        base_level = "轻仓"
-        base_min, base_max = 0.2, 0.4
-    else:
-        base_level = "空仓/观望"
-        base_min, base_max = 0.0, 0.2
-
-    # 趋势硬性仓位上限截断
-    real_max = min(base_max, max_allow_pos)
-    real_min = min(base_min, real_max)
-    final_position = f"{real_min * 100:.0f}%~{real_max * 100:.0f}%"
-
-    # ===================== 操作建议，区分多空突破信号 =====================
-    base_op = ""
-    if price_score >= 50 and volume_score >= 50:
-        if "二阶多头" in trend_type and is_volume_spike:
-            base_op = "买入/持有信号（放量突破16日线多头共振，积极加仓！）"
-        elif "一阶突破" in trend_type and is_volume_spike:
-            base_op = "买入信号（放量突破5日线，可适度加仓）"
-        elif "空头" in trend_type:
-            base_op = "观望信号（价量尚可，但处于下跌均线，严控仓位）"
-        else:
-            base_op = "买入/持有信号（价量共振走强）,想想赚钱的感觉！"
-    elif price_score >= 50 and volume_score < 50:
-        base_op = "观望信号（价强量弱，无量上涨不宜加仓）"
-    elif price_score < 50 and volume_score >= 50:
-        base_op = "观望信号（量强价弱，反弹减仓）"
-    else:
-        base_op = "卖出/空仓信号（价量双弱）, 想想亏钱的日子！"
-
-    # 拼接：基础操作 + 趋势纪律 + 风险提示
-    full_op = f"{base_op}{turn_tip}"
-    operation = f"{full_op}【{risk_notice}】" if risk_notice else full_op
-
-    # ===================== 返回字典：兼容旧字段 + 新增反转拐点信息 =====================
-    res_dict = {
-        # 原版保留全部字段，业务无修改
-        "最终综合评分": final_score,
-        "最终仓位等级": base_level,
-        "建议仓位区间": final_position,
-        "操作建议": operation,
-        "价格评分": price_score,
-        "成交量评分": volume_score,
-        "价格维度详情": price_result,
-        "成交量维度详情": volume_result,
-
-        # 扩展字段
-        "当前趋势档位": trend_type,
-        "趋势允许最大仓位": f"{max_allow_pos * 100:.0f}%",
-        "是否单日放量": is_volume_spike,
-        "动态价量权重": {"价格权重": w_price, "成交量权重": w_volume},
-        "均线行情数据": {
-            "现价": round(price_today, 2),
-            "MA5价格": round(price_ma5, 2),
-            "MA16价格": round(price_ma16, 2),
-            "当日成交额": vol_today,
-            "昨日成交额": vol_yest,
-            "前日成交额": vol_day_before_yest,
-            "5日均成交额": vol_ma5
-        },
-        # 新增反转拐点标记（连续3日条件）
-        "拐点预警": {
-            "多头转跌风险(连续3日缩量破5日线)": turn_bear_warn,
-            "底部反转信号(连续3日放量站稳5日线)": turn_bull_signal
-        }
-    }
-
-    print("价格分析结果：", price_result)
-    print("成交量分析结果：", volume_result)
     return price_result, volume_result, res_dict
 
 
